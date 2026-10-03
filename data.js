@@ -208,7 +208,7 @@ window.PD = (function () {
   // The scorer's sample, derived: target = sum of commitments, actual = sum of attainments (null if any market is unknown),
   // qbr = held per the QBR calendar, pipeline = open opportunities for the current quarter, else the recorded figure.
   function scorerSample() {
-    const rows = jbpRows();
+    const rows = jbpRows(), cal = qbrs();
     const open = {};
     OPPS.forEach(o => { if (isOpen(o)) open[o.agency] = (open[o.agency] || 0) + o.value; });
     return AGENCIES.map(a => {
@@ -219,7 +219,7 @@ window.PD = (function () {
         const x = EXTRAS[a.id][q];
         const target = rs.reduce((s, r) => s + r.commit, 0);
         const actual = rs.every(r => isNum(r.attain)) ? rs.reduce((s, r) => s + r.attain, 0) : null;
-        const qb = QBRS.find(z => z.agency === a.id && z.quarter === q);
+        const qb = cal.find(z => z.agency === a.id && z.quarter === q);
         const pipeline = q === "2026-Q3" ? (open[a.id] === undefined ? null : open[a.id]) : x[3];
         hist[q] = [target, actual, x[0], x[1], x[2], !!(qb && qb.held), pipeline, x[4], x[5]];
       });
