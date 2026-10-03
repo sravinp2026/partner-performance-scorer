@@ -6,43 +6,11 @@
 <title>Partner Performance Scorer</title>
 <meta name="description" content="Scores agency partners for a retail-media ads business, explains every score, flags thin or stale data, and tracks the agreed actions to closure. Demo with invented data.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
-<style>
-:root{--bg:#f6f7f5;--card:#fff;--ink:#17201c;--muted:#5f6b66;--line:#e2e6e3;--brand:#0b4f3c;--brand2:#1aa37a;--soft:#eef4f1;--red:#b5392f;--amber:#c58a1a;--green:#1f8a5b;--blue:#2c5fa8;--grey:#7c8884}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111614;--card:#1a211e;--ink:#e8ece9;--muted:#9aa5a0;--line:#2b3430;--brand:#0f6b52;--soft:#1f2a25}}
-:root[data-theme=dark]{--bg:#111614;--card:#1a211e;--ink:#e8ece9;--muted:#9aa5a0;--line:#2b3430;--brand:#0f6b52;--soft:#1f2a25}
-*{box-sizing:border-box}body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-header{background:var(--brand);color:#fff;padding:18px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
-header h1{margin:0;font-size:21px}header p{margin:3px 0 0;opacity:.85;font-size:13px;max-width:760px}
-.qsel{display:flex;gap:8px;align-items:center;font-size:13px}.qsel select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff}
-main{max-width:1240px;margin:0 auto;padding:18px 16px 60px}
-.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}.grid>div{min-width:0}@media(min-width:960px){.grid.two{grid-template-columns:300px minmax(0,1fr)}}
-.chart{position:relative;min-width:0}canvas{max-width:100%}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}.card+.card{margin-top:16px}
-.card h2{margin:0 0 10px;font-size:15px;color:var(--brand);display:flex;justify-content:space-between;align-items:center;gap:8px}.card h2 small{font-weight:400;color:var(--muted);font-size:12px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}.kpi b{display:block;font-size:22px}.kpi span{color:var(--muted);font-size:12px}
-label.w{display:grid;grid-template-columns:1fr 34px;grid-template-areas:"t o" "r r";align-items:center;gap:2px 8px;margin:8px 0;font-size:13px}label.w input{grid-area:r;width:100%}label.w output{grid-area:o;text-align:right;font-variant-numeric:tabular-nums}
-.rule{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center;font-size:13px;margin:6px 0}.rule input{width:100%;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);user-select:none}th.sort{cursor:pointer}
-#tbl td:first-child{min-width:130px}#tbl td:first-child b{white-space:nowrap}td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;font-weight:700}.score.na{color:var(--muted);font-size:14px}
-.tier,.conf{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
-.t-Strategic{background:var(--green)}.t-Healthy{background:var(--blue)}.t-Watch{background:var(--amber)}.t-Atrisk{background:var(--red)}.t-Notscored{background:var(--grey)}
-.c-High{background:var(--green)}.c-Medium{background:var(--amber)}.c-Low{background:var(--red)}
-.bars{display:grid;gap:3px;min-width:120px}.bar{height:6px;background:var(--soft);border-radius:3px;position:relative}.bar i{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--brand2)}.bar.na{background:repeating-linear-gradient(90deg,var(--soft) 0 4px,transparent 4px 7px)}
-ul.acts{margin:0;padding-left:0;list-style:none;min-width:240px}ul.acts li{margin:3px 0;display:flex;gap:6px;align-items:flex-start}ul.acts li.done span{text-decoration:line-through;color:var(--muted)}ul.acts input{margin-top:3px}
-.flag{font-size:11px;color:var(--amber);display:block}.flag.red{color:var(--red)}
-.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}button,.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}button.sec,.btn.sec{background:var(--card);color:var(--brand)}button.sm{padding:2px 8px;font-size:12px}
-input.cell{width:100%;border:1px solid transparent;background:transparent;padding:3px 4px;border-radius:4px;font:inherit;color:var(--ink)}input.cell:focus{border-color:var(--brand2);background:var(--card);outline:none}input.cell[type=number]{width:74px;text-align:right}input.cell[type=date]{width:130px}
-input.cell.empty{background:var(--soft)}
-details summary{cursor:pointer;color:var(--brand);font-weight:600}textarea{width:100%;min-height:170px;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:7px;padding:8px;background:var(--card);color:var(--ink)}
-.note{font-size:12px;color:var(--muted)}.chart{height:220px}.spark{width:70px;height:22px;vertical-align:middle}
-.why{background:var(--soft);border-radius:8px;padding:10px 12px;font-size:13px}.why table{font-size:12px}.why td,.why th{padding:4px 6px}
-.log{font:12px/1.5 ui-monospace,Menlo,monospace;max-height:180px;overflow:auto;color:var(--muted)}
-footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.row-Atrisk td:first-child{border-left:3px solid var(--red)}.row-Notscored td{opacity:.75}
-.banner{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px}
-</style>
+<link rel="stylesheet" href="styles.css">
+<script src="data.js"></script>
 </head>
 <body>
+<nav id="nav" aria-label="Partner Desk"></nav>
 <header>
   <div><h1>Partner Performance Scorer</h1>
   <p>Scores each agency partner 0–100 from five commercial signals, explains every score, flags thin or stale data instead of scoring it, and tracks the agreed actions to closure. Edit any cell, weight or rule and everything recomputes. All data is invented.</p></div>
@@ -82,25 +50,16 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.row-
         <p><b>Every number explains itself.</b> "Why this score" shows the raw inputs, the scaled signal, the weight and the threshold behind each action, so a QBR starts from evidence rather than a label.</p>
         <p><b>Actions are tracked, not just recommended.</b> Each action has an owner (the partner manager) and a checkbox; the open count sits in the headline figures. Changes to inputs, weights and rules are logged.</p>
         <p><b>Next, with real data:</b> nightly CRM and ad-server pull with a source stamp per field, market and holding-group roll-ups for the leadership review, score deltas quarter on quarter, and an LLM for the narrative only.</p>
-        <p class="note">Built by Ravi Singhal for Careem Ads' AI challenge 1. Single HTML file, no backend, no tracking. Code at github.com/sravinp2026/partner-performance-scorer.</p></details>
+        <p class="note">Built by Ravi Singhal for Careem Ads' AI challenge 1. Static files, no backend, no tracking. The JBPs, Pipeline and QBRs tabs extend it into Partner Desk; see Method. Code at github.com/sravinp2026/partner-performance-scorer.</p></details>
     </div>
   </div>
-  <footer>Partner Performance Scorer · invented data · Ravi Singhal · <a href="https://www.linkedin.com/in/ravisgl">linkedin.com/in/ravisgl</a></footer>
+  <footer id="foot"></footer>
 </main>
 <script>
-const TODAY="2026-10-03";
-const QUARTERS=["2025-Q4","2026-Q1","2026-Q2","2026-Q3"];
+const TODAY=PD.TODAY;
+const QUARTERS=PD.QUARTERS.slice();
 // partner, market, group, manager, then per quarter [target, actual, adv, formats, pilots, qbr, pipeline, asOf, source]; null = unknown
-const SAMPLE=[
- ["Agency A","UAE","Group 1","Sara",{"2025-Q4":[700,650,9,2,0,true,900,"2026-01-05","CRM"],"2026-Q1":[800,720,11,3,1,true,1100,"2026-04-04","CRM"],"2026-Q2":[850,820,11,3,1,true,1250,"2026-07-03","CRM"],"2026-Q3":[900,1010,14,4,2,true,1400,"2026-10-02","CRM"]}],
- ["Agency B","UAE","Group 2","Sara",{"2025-Q4":[600,610,10,2,0,true,700,"2026-01-05","CRM"],"2026-Q1":[650,590,9,2,0,true,680,"2026-04-04","CRM"],"2026-Q2":[700,640,9,2,0,true,650,"2026-07-03","CRM"],"2026-Q3":[700,520,8,2,0,true,600,"2026-10-02","CRM"]}],
- ["Agency C","KSA","Group 1","Faisal",{"2025-Q4":[900,870,12,2,0,true,1100,"2026-01-05","CRM"],"2026-Q1":[1000,940,13,3,1,true,1300,"2026-04-04","CRM"],"2026-Q2":[1100,980,14,3,1,true,1400,"2026-07-03","CRM"],"2026-Q3":[1200,1130,17,3,1,true,1500,"2026-10-02","CRM"]}],
- ["Agency D","KSA","Group 3","Faisal",{"2025-Q4":[600,520,8,1,0,true,600,"2026-01-05","CRM"],"2026-Q1":[700,480,8,1,0,false,500,"2026-04-04","CRM"],"2026-Q2":[800,450,8,1,0,false,400,"2026-07-03","CRM"],"2026-Q3":[800,310,5,1,0,false,null,"2026-10-02","CRM"]}],
- ["Agency E","Egypt","Group 2","Nour",{"2025-Q4":[250,200,5,2,0,true,350,"2026-01-05","CRM"],"2026-Q1":[300,260,6,2,0,true,450,"2026-04-04","CRM"],"2026-Q2":[350,300,6,3,1,true,550,"2026-07-03","CRM"],"2026-Q3":[400,455,9,3,1,true,700,"2026-10-02","CRM"]}],
- ["Agency F","Egypt","Group 4","Nour",{"2026-Q3":[350,140,3,1,0,false,120,"2026-10-01","Manual"]}],
- ["Agency G","UAE","Group 4","Sara",{"2025-Q4":[550,540,10,2,0,true,600,"2026-01-05","CRM"],"2026-Q1":[600,580,10,2,0,true,620,"2026-04-04","CRM"],"2026-Q2":[600,590,10,2,0,true,630,"2026-07-03","CRM"],"2026-Q3":[600,610,10,2,0,true,640,"2026-10-02","CRM"]}],
- ["Agency H","KSA","Group 5","Faisal",{"2025-Q4":[800,790,12,2,0,true,900,"2026-01-05","CRM"],"2026-Q1":[900,760,12,2,0,true,850,"2026-04-04","CRM"],"2026-Q2":[1000,700,12,2,0,true,700,"2026-07-03","CRM"],"2026-Q3":[1000,480,7,2,0,true,500,"2026-08-12","Manual"]}],
-];
+const SAMPLE=PD.scorerSample(); // derived from the shared JBP rows in data.js: target = sum of commitments, actual = sum of attainments
 const QK=["target","actual","adv","formats","pilots","qbr","pipeline","asOf","source"];
 const W_DEF={attainment:35,growth:20,breadth:15,adoption:15,pipeline:15};
 const W_LABEL={attainment:"Revenue attainment",growth:"Quarter-on-quarter growth",breadth:"Active-advertiser breadth",adoption:"Format and pilot adoption",pipeline:"Pipeline cover"};
@@ -113,8 +72,8 @@ const fmt=n=>(+n).toLocaleString("en-US");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const daysBetween=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 function reset(){S.partners=SAMPLE.map((r,i)=>({id:"p"+i,partner:r[0],market:r[1],group:r[2],manager:r[3],hist:Object.fromEntries(Object.entries(r[4]).map(([q,v])=>[q,Object.fromEntries(QK.map((k,j)=>[k,v[j]]))]))}));S.W={...W_DEF};S.R={...R_DEF};S.done={};S.log=[];S.q="2026-Q3";logIt("Sample data loaded")}
-function load(){try{const s=JSON.parse(localStorage.getItem("pps2")||"null");if(s&&s.partners)S=s;else reset()}catch(e){reset()}}
-function save(){try{localStorage.setItem("pps2",JSON.stringify(S))}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem("pps3")||"null");if(s&&s.partners)S=s;else reset()}catch(e){reset()}}
+function save(){try{localStorage.setItem("pps3",JSON.stringify(S))}catch(e){}}
 function logIt(msg){S.log.unshift(`${new Date().toISOString().slice(0,16).replace("T"," ")}  ${msg}`);S.log=S.log.slice(0,60)}
 const prevQ=q=>{const i=QUARTERS.indexOf(q);return i>0?QUARTERS[i-1]:null};
 function evaluate(p,q){
@@ -229,7 +188,7 @@ document.getElementById("importCsv").onchange=e=>{const f=e.target.files[0];if(!
   const p=byName[r.partner]||(byName[r.partner]={id:"p"+(++n)+"_"+Date.now(),partner:r.partner,market:r.market||"",group:r.group||"",manager:r.manager||"",hist:{}});
   const num=v=>v===""||v===undefined?null:(isNaN(+v)?null:+v);p.hist[r.quarter]={target:num(r.target),actual:num(r.actual),adv:num(r.adv),formats:num(r.formats),pilots:num(r.pilots),qbr:/^(y|yes|true|1)$/i.test(r.qbr||""),pipeline:num(r.pipeline),asOf:r.asOf||null,source:r.source||"CSV"}}
  const ps=Object.values(byName);if(ps.length){S.partners=ps;const qs=[...new Set(ps.flatMap(p=>Object.keys(p.hist)))].sort();qs.forEach(q=>{if(!QUARTERS.includes(q))QUARTERS.push(q)});QUARTERS.sort();if(!qs.includes(S.q))S.q=qs[qs.length-1];logIt(`Imported ${ps.length} partners, ${lines.length} rows from CSV`);render()}else alert("No rows recognised. Check the column names.");e.target.value=""})};
-load();render();
+PD.mountChrome("Scorer");load();render();
 </script>
 </body>
 </html>
