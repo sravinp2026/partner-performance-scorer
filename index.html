@@ -12,12 +12,12 @@
 header{background:var(--brand);color:#fff;padding:22px 24px}header h1{margin:0;font-size:22px}header p{margin:4px 0 0;opacity:.85;font-size:13px}
 main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
 .grid{display:grid;gap:16px;grid-template-columns:1fr}
-@media(min-width:900px){.grid.two{grid-template-columns:340px 1fr}}
+@media(min-width:900px){.grid.two{grid-template-columns:300px minmax(0,1fr)}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
 .card h2{margin:0 0 10px;font-size:15px;color:var(--brand)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}.kpi b{display:block;font-size:22px}.kpi span{color:var(--muted);font-size:12px}
-label.w{display:grid;grid-template-columns:1fr 46px;align-items:center;gap:8px;margin:6px 0;font-size:13px}label.w input{width:100%}label.w output{text-align:right;font-variant-numeric:tabular-nums}
+label.w{display:grid;grid-template-columns:1fr 34px;grid-template-areas:"t o" "r r";align-items:center;gap:2px 8px;margin:8px 0;font-size:13px}label.w input{grid-area:r}label.w output{grid-area:o}label.w input{width:100%}label.w output{text-align:right;font-variant-numeric:tabular-nums}
 .sum{font-size:12px;color:var(--muted);margin-top:6px}.sum.bad{color:var(--red)}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);cursor:pointer;user-select:none}
 td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;font-weight:700}
@@ -25,7 +25,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;
 .t-Strategic{background:var(--green)}.t-Healthy{background:var(--blue)}.t-Watch{background:var(--amber)}.t-At.risk,.t-Atrisk{background:var(--red)}
 .bars{display:grid;gap:3px;min-width:120px}.bar{height:6px;background:#eef1ee;border-radius:3px;position:relative}.bar i{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--brand2)}
 .bar small{position:absolute;right:-2px;top:-9px;font-size:9px;color:var(--muted)}
-ul.acts{margin:0;padding-left:16px}ul.acts li{margin:2px 0}
+ul.acts{margin:0;padding-left:16px;min-width:220px}ul.acts li{margin:2px 0}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}button,.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}button.sec{background:#fff;color:var(--brand)}
 input.cell{width:100%;border:1px solid transparent;background:transparent;padding:3px 4px;border-radius:4px;font:inherit}input.cell:focus{border-color:var(--brand2);background:#fff;outline:none}
 input.cell[type=number]{width:72px;text-align:right}
@@ -74,7 +74,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
         <div style="overflow:auto">
         <table id="tbl">
           <thead><tr>
-            <th data-k="partner">Partner</th><th data-k="score">Score</th><th>Attain · Growth · Breadth · Adopt · Pipeline</th><th>Recommended actions</th><th></th>
+            <th data-k="partner">Partner</th><th data-k="score">Score</th><th>Signals</th><th>Recommended actions</th><th></th>
           </tr></thead>
           <tbody></tbody>
         </table>
