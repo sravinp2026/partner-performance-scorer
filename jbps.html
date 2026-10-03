@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JBPs · Partner Desk</title>
+<meta name="description" content="Joint business plans: commitment against attainment per agency, quarter and market, with holding-group and market roll-ups and variance reason codes. Invented data.">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
+<script src="data.js"></script>
+</head>
+<body>
+<nav id="nav" aria-label="Partner Desk"></nav>
+<header>
+  <div><h1>Joint business plans</h1>
+  <p>Each agency signs a JBP a year: committed spend by quarter and market, the formats and pilots agreed, the terms. Attainment is measured against that commitment, not an internal target. Edit an attainment figure, pick a reason for a variance, and every roll-up recomputes. All data is invented.</p></div>
+  <div class="qsel"><label for="qpick">Quarter</label><select id="qpick"></select></div>
+</header>
+<main>
+  <div class="banner" id="banner"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid two">
+    <div>
+      <div class="card"><h2>Rules <small>editable</small></h2><div id="rules"></div>
+        <p class="note">On plan means attainment within the band either side of 100%. Below the attainment floor the row gets a recovery action for the partner manager. A variance outside the band with no reason code gets a "pick a reason" action, so no gap stays unexplained.</p></div>
+      <div class="card"><h2>Holding-group roll-up <small id="gNote"></small></h2><div class="chart"><canvas id="gChart"></canvas></div>
+        <div class="scroll"><table id="gTbl"><thead><tr><th>Group</th><th class="r">Commit</th><th class="r">Attain</th><th class="r">%</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="card"><h2>Market roll-up</h2>
+        <div class="scroll"><table id="mTbl"><thead><tr><th>Market</th><th class="r">Commit</th><th class="r">Attain</th><th class="r">%</th></tr></thead><tbody></tbody></table></div>
+        <p class="note">Roll-ups add only rows that have both a commitment and an attainment for the quarter. Rows with an unknown attainment are counted separately and never as zero.</p></div>
+      <div class="card"><h2>Change log</h2><div class="log" id="log"></div><div class="btns"><button class="sec" id="resetBtn">Reset sample</button></div></div>
+    </div>
+    <div>
+      <div class="card"><h2>Commitment vs attainment <small id="tNote"></small></h2>
+        <div class="filters"><label>Market <select id="fMarket"><option value="">all</option></select></label><label>Group <select id="fGroup"><option value="">all</option></select></label><label><input type="checkbox" id="fVar"> only variances</label></div>
+        <div class="scroll"><table id="tbl"><thead><tr><th>Agency</th><th>Market</th><th class="r">Commit</th><th class="r">Attain</th><th class="r">Variance</th><th>Reason</th><th>Confidence</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+        <p class="note">Click any figure to see its inputs. Attainment cells are editable; a blank is an unknown figure and is flagged, not scored. Reason codes are chosen by the partner manager, never guessed by the tool.</p></div>
+      <div class="card"><h2>Trend by agency <small>attainment % per quarter, all markets</small></h2>
+        <div class="scroll"><table id="trend"><thead></thead><tbody></tbody></table></div></div>
+      <div class="card"><h2>Next-quarter commitments <small id="nNote"></small></h2>
+        <div class="scroll"><table id="next"><thead><tr><th>Agency</th><th>Market</th><th class="r">Commit</th><th>Formats agreed</th><th>Pilots</th><th>Terms</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+  </div>
+  <footer id="foot"></footer>
+</main>
+<script>
+(function(){
+const {esc,fmt,money,isNum,pct}=PD;
+const S=PD.load();
+const R_LABEL={onPlanBand:"On plan when within ±(%) of commitment",lowAttain:"Recovery action when attainment below (%)"};
+let chart;
+const vcls=v=>v===null?"var-flat":v>0?"var-pos":v<0?"var-neg":"var-flat";
+function rowsFor(q){return PD.jbpRows().filter(r=>r.quarter===q)}
+function actionsFor(r){const a=PD.agency(r.agency);const out=[];const p=pct(r.attain,r.commit);
+ if(!isNum(r.attain))out.push({key:r.key+"|fill",text:`Fill the attainment figure for ${a.name} ${r.market} ${r.quarter} before the QBR`,owner:a.manager,rule:"attainment unknown"});
+ else{if(p<S.lowAttain)out.push({key:r.key+"|recover",text:`${a.name} ${r.market} at ${p}% of commitment: agree a recovery plan with the agency lead`,owner:a.manager,rule:`attainment ${p}% < ${S.lowAttain}%`});
+  if(Math.abs(p-100)>S.onPlanBand&&!r.reason)out.push({key:r.key+"|reason",text:`Pick a reason code for the ${p-100>0?"+":""}${p-100}% variance`,owner:a.manager,rule:`variance outside ±${S.onPlanBand}% and no reason`});}
+ return out}
+function render(){
+ const q=S.q;const all=rowsFor(q);
+ document.getElementById("qpick").innerHTML=PD.QUARTERS.map(x=>`<option ${x===q?"selected":""}>${x}</option>`).join("");
+ const fm=document.getElementById("fMarket"),fg=document.getElementById("fGroup");
+ if(fm.options.length===1){PD.MARKETS.forEach(m=>fm.add(new Option(m,m)));PD.GROUPS.forEach(g=>fg.add(new Option(g,g)))}
+ const rd=document.getElementById("rules");if(!rd.children.length){rd.innerHTML=Object.keys(R_LABEL).map(k=>`<label class="rule">${R_LABEL[k]}<input type="number" step="any" data-r="${k}" value="${S[k]}"></label>`).join("");
+  rd.querySelectorAll("input").forEach(i=>i.onchange=e=>{S[e.target.dataset.r]=+e.target.value;PD.logIt(`Rule "${R_LABEL[e.target.dataset.r]}" → ${e.target.value}`);render()})}
+ const known=all.filter(r=>isNum(r.attain));const unk=all.length-known.length;
+ const C=known.reduce((s,r)=>s+r.commit,0),A=known.reduce((s,r)=>s+r.attain,0);
+ const acts=all.flatMap(actionsFor);const open=acts.filter(a=>!S.done[a.key]).length;
+ const onPlan=known.filter(r=>Math.abs(pct(r.attain,r.commit)-100)<=S.onPlanBand).length,below=known.filter(r=>pct(r.attain,r.commit)<S.lowAttain).length;
+ document.getElementById("kpis").innerHTML=[
+  [`<span class="fig" data-fig="head">${C?Math.round(A/C*100)+"%":"—"}</span>`,`JBP attainment, ${q}`],[`<span class="fig" data-fig="headA">${money(A)}</span>`,"attained, rows with a figure"],[`<span class="fig" data-fig="headC">${money(C)}</span>`,"committed, same rows"],
+  [onPlan,"rows on plan"],[below,`rows below ${S.lowAttain}%`],[unk,"rows with unknown attainment"],[open,"open actions"]].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+ document.getElementById("banner").innerHTML=`<b>Invented data.</b> ${q}: ${all.length} agency-market rows from ${new Set(all.map(r=>r.agency)).size} agencies${unk?`, ${unk} with no attainment figure yet (blank, flagged, not counted)`:""}. Figures are USD thousands. Today is treated as ${PD.TODAY} for staleness. The Scorer's target and actual for each agency are the sums of these rows.`;
+ // main table
+ const vis=all.filter(r=>(!fm.value||r.market===fm.value)&&(!fg.value||PD.agency(r.agency).group===fg.value)&&(!document.getElementById("fVar").checked||!isNum(r.attain)||Math.abs(pct(r.attain,r.commit)-100)>S.onPlanBand));
+ document.getElementById("tNote").textContent=`${q} · ${vis.length} of ${all.length} rows`;
+ document.querySelector("#tbl tbody").innerHTML=vis.map(r=>{const a=PD.agency(r.agency);const p=pct(r.attain,r.commit);const v=p===null?null:p-100;const conf=PD.rowConfidence(r);const age=PD.ageOf(r.asOf);const ra=actionsFor(r);
+  return `<tr><td><b>${esc(a.name)}</b><br><span class="note">${esc(a.group)} · ${esc(a.manager)}</span></td><td>${esc(r.market)}</td>
+  <td class="r"><span class="fig" data-fig="c|${r.key}">${fmt(r.commit)}</span></td>
+  <td class="r"><input class="cell ${isNum(r.attain)?"":"empty"}" type="number" data-att="${r.key}" value="${isNum(r.attain)?r.attain:""}" placeholder="—"></td>
+  <td class="r ${vcls(v)}">${v===null?`<span class="fig na" data-fig="v|${r.key}">unknown</span>`:`<span class="fig" data-fig="v|${r.key}">${v>0?"+":""}${v}%</span>`}</td>
+  <td>${v!==null&&Math.abs(v)>S.onPlanBand?`<select class="inline" data-reason="${r.key}"><option value="">pick a reason</option>${PD.REASONS.map(x=>`<option ${x===r.reason?"selected":""}>${x}</option>`).join("")}</select>`:`<span class="note">${v===null?"—":"on plan"}</span>`}</td>
+  <td><span class="conf c-${conf}">${conf}</span>${!isNum(r.attain)?`<span class="flag red">attainment unknown</span>`:""}${age!==null&&age>45?`<span class="flag red">figures ${age} days old</span>`:""}${/manual/i.test(r.source||"")?`<span class="flag">manually entered</span>`:""}</td>
+  <td><ul class="acts">${ra.length?ra.map(x=>`<li class="${S.done[x.key]?"done":""}"><input type="checkbox" data-done="${x.key}" ${S.done[x.key]?"checked":""} title="${esc(x.rule)}"><span>${esc(x.text)} <span class="note">· ${esc(x.owner)}</span></span></li>`).join(""):`<li><span class="note">none</span></li>`}</ul></td></tr>`}).join("");
+ // roll-ups
+ const roll=(keyFn,labels)=>{const g={};known.forEach(r=>{const k=keyFn(r);const o=g[k]||(g[k]={c:0,a:0,n:0});o.c+=r.commit;o.a+=r.attain;o.n++});const u={};all.filter(r=>!isNum(r.attain)).forEach(r=>{const k=keyFn(r);u[k]=(u[k]||0)+1});return labels.map(l=>({l,c:g[l]?g[l].c:null,a:g[l]?g[l].a:null,n:g[l]?g[l].n:0,u:u[l]||0}))};
+ const G=roll(r=>PD.agency(r.agency).group,PD.GROUPS),M=roll(r=>r.market,PD.MARKETS);
+ const rollRow=(x,pre)=>`<tr><td>${esc(x.l)}${x.u?`<span class="flag">${x.u} row${x.u>1?"s":""} unknown</span>`:""}</td><td class="r">${x.c===null?"<span class='muted'>—</span>":`<span class="fig" data-fig="${pre}|${x.l}">${fmt(x.c)}</span>`}</td><td class="r">${x.a===null?"<span class='muted'>—</span>":fmt(x.a)}</td><td class="r">${x.c?`<span class="fig" data-fig="${pre}|${x.l}">${Math.round(x.a/x.c*100)}%</span>`:"<span class='muted'>no rows</span>"}</td></tr>`;
+ document.querySelector("#gTbl tbody").innerHTML=G.map(x=>rollRow(x,"g")).join("");document.querySelector("#mTbl tbody").innerHTML=M.map(x=>rollRow(x,"m")).join("");
+ document.getElementById("gNote").textContent=`${q}, ${known.length} of ${all.length} rows`;
+ const data={labels:G.filter(x=>x.c!==null).map(x=>x.l),datasets:[{label:"Attained ($k)",data:G.filter(x=>x.c!==null).map(x=>x.a),backgroundColor:"#1aa37a"},{label:"Committed ($k)",data:G.filter(x=>x.c!==null).map(x=>x.c),backgroundColor:"#b9c9c1"}]};
+ if(chart){chart.data=data;chart.update()}else if(window.Chart)chart=new Chart(document.getElementById("gChart"),{type:"bar",data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}});
+ // trend
+ const rows=PD.jbpRows();document.querySelector("#trend thead").innerHTML=`<tr><th>Agency</th>${PD.QUARTERS.map(x=>`<th class="r">${x}</th>`).join("")}</tr>`;
+ document.querySelector("#trend tbody").innerHTML=PD.AGENCIES.map(a=>`<tr><td><b>${esc(a.name)}</b></td>${PD.QUARTERS.map(x=>{const rs=rows.filter(r=>r.agency===a.id&&r.quarter===x);if(!rs.length)return`<td class="r muted">no JBP</td>`;if(!rs.every(r=>isNum(r.attain)))return`<td class="r"><span class="fig na" data-fig="t|${a.id}|${x}">unknown</span></td>`;const c=rs.reduce((s,r)=>s+r.commit,0),at=rs.reduce((s,r)=>s+r.attain,0);const p=Math.round(at/c*100);return`<td class="r ${vcls(p-100)}"><span class="fig" data-fig="t|${a.id}|${x}">${p}%</span></td>`}).join("")}</tr>`).join("");
+ // next quarter
+ const nx=rows.filter(r=>r.quarter===PD.NEXT_Q);document.getElementById("nNote").textContent=`${PD.NEXT_Q}, ${money(nx.reduce((s,r)=>s+r.commit,0))} committed`;
+ document.querySelector("#next tbody").innerHTML=nx.map(r=>{const a=PD.agency(r.agency);return`<tr><td><b>${esc(a.name)}</b></td><td>${esc(r.market)}</td><td class="r"><span class="fig" data-fig="c|${r.key}">${fmt(r.commit)}</span></td><td>${esc(r.formats.join(", "))}</td><td>${r.pilots.length?esc(r.pilots.join(", ")):"<span class='muted'>none</span>"}</td><td class="mini">${esc(r.terms)}</td></tr>`}).join("");
+ PD.renderLog(document.getElementById("log"));PD.save();
+}
+PD.wireFigures(document,id=>{const [t,...rest]=id.split("|");const rows=PD.jbpRows();const q=S.q;
+ if(t==="head"||t==="headA"||t==="headC"){const k=rows.filter(r=>r.quarter===q&&isNum(r.attain));const C=k.reduce((s,r)=>s+r.commit,0),A=k.reduce((s,r)=>s+r.attain,0);return{title:`JBP attainment, ${q}`,rows:[...k.map(r=>[`${PD.agency(r.agency).name} ${r.market}`,`${fmt(r.attain)} of ${fmt(r.commit)}`]),["Attained (sum)",money(A)],["Committed (sum)",money(C)],["Attainment",C?Math.round(A/C*100)+"%":"—"]],note:`${rows.filter(r=>r.quarter===q&&!isNum(r.attain)).length} rows with an unknown attainment are excluded from both sums.`}}
+ if(t==="c"||t==="v"){const r=rows.find(x=>x.key===rest.join("|"));if(!r)return null;const a=PD.agency(r.agency);const p=pct(r.attain,r.commit);return{title:`${a.name} ${r.market} ${r.quarter}`,rows:[["JBP year",r.year],["Commitment",money(r.commit)],["Attainment",isNum(r.attain)?money(r.attain):"unknown"],["Attainment %",p===null?"—":p+"%"],["Variance",p===null?"—":(p-100>0?"+":"")+(p-100)+"%"],["Reason code",r.reason||"none picked"],["As of",r.asOf||"—"],["Source",r.source||"—"],["Formats agreed",r.formats.join(", ")],["Terms",r.terms]],note:"Variance = attainment ÷ commitment − 100%. Edited attainments are stored in this browser only."}}
+ if(t==="g"||t==="m"){const k=rows.filter(r=>r.quarter===q&&isNum(r.attain)&&(t==="g"?PD.agency(r.agency).group===rest[0]:r.market===rest[0]));const C=k.reduce((s,r)=>s+r.commit,0),A=k.reduce((s,r)=>s+r.attain,0);return{title:`${rest[0]}, ${q}`,rows:[...k.map(r=>[`${PD.agency(r.agency).name} ${r.market}`,`${fmt(r.attain)} of ${fmt(r.commit)}`]),["Total",`${fmt(A)} of ${fmt(C)} (${C?Math.round(A/C*100):"—"}%)`]]}}
+ if(t==="t"){const k=rows.filter(r=>r.agency===rest[0]&&r.quarter===rest[1]);return{title:`${PD.agency(rest[0]).name}, ${rest[1]}`,rows:k.map(r=>[r.market,isNum(r.attain)?`${fmt(r.attain)} of ${fmt(r.commit)}`:`unknown of ${fmt(r.commit)}`]),note:"The Scorer uses the same sums as its target and actual."}}
+ return null});
+document.getElementById("qpick").onchange=e=>{S.q=e.target.value;render()};
+["fMarket","fGroup","fVar"].forEach(id=>document.getElementById(id).onchange=render);
+document.addEventListener("change",e=>{const el=e.target;
+ if(el.dataset.att!==undefined){const old=S.attain[el.dataset.att];const v=el.value===""?null:+el.value;S.attain[el.dataset.att]=v;PD.logIt(`Attainment ${el.dataset.att.replace(/\|/g," ")}: ${old===undefined?"sample":old??"—"} → ${v??"—"}`);render()}
+ else if(el.dataset.reason!==undefined){S.reasons[el.dataset.reason]=el.value;PD.logIt(`Reason ${el.dataset.reason.replace(/\|/g," ")} → ${el.value||"cleared"}`);render()}
+ else if(el.dataset.done){if(el.checked)S.done[el.dataset.done]=true;else delete S.done[el.dataset.done];PD.logIt(`${el.checked?"Closed":"Reopened"} action: ${el.nextElementSibling.textContent.slice(0,60)}`);render()}});
+document.getElementById("resetBtn").onclick=()=>{if(confirm("Reset Partner Desk edits (JBPs, Pipeline, QBRs) to the sample?")){PD.reset();location.reload()}};
+PD.mountChrome("JBPs");render();
+})();
+</script>
+</body>
+</html>
