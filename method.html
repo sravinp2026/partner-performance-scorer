@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Method · Partner Desk</title>
+<meta name="description" content="What Partner Desk is, the proposal behind it in plain language, the design rules, what it is not, and who built it. Invented data; not affiliated with Careem.">
+<link rel="stylesheet" href="styles.css">
+<script src="data.js"></script>
+</head>
+<body>
+<nav id="nav" aria-label="Partner Desk"></nav>
+<header>
+  <div><h1>Method</h1>
+  <p>Built as a working proposal. Invented data. Not affiliated with Careem.</p></div>
+</header>
+<main class="method">
+  <div class="banner"><b>Invented data.</b> Every agency, group, advertiser and figure in this site is made up to show how the layer works. Nothing here describes any real company's numbers. Everything written about Careem Ads comes from public sources: the job posting and press coverage.</div>
+
+  <div class="card">
+  <h2>What this is</h2>
+  <p>Partner Desk is the operating layer for an ads platform's agency channel: every holding group, agency and market with its joint business plan, its pipeline, its attainment, its adoption and its agreed actions, in one place, with the QBR pack written from the numbers.</p>
+  <p>It extends the Partner Performance Scorer (the first tab) in three steps:</p>
+  <ol>
+    <li><b>JBP layer.</b> A JBP per agency per year: committed spend by quarter and market, the formats and pilots agreed, the terms. Attainment is measured against the JBP, not an internal target. Holding-group and market roll-ups across UAE, KSA and Egypt.</li>
+    <li><b>Pipeline and coverage.</b> Opportunities by agency, advertiser, market and stage; coverage against next quarter's JBP commitment; stale-deal flags with the same data-confidence rules the scorer has.</li>
+    <li><b>Operating rhythm.</b> A QBR calendar per agency; the QBR pack generated from the record (numbers, trend, variance reasons, actions and their owners, next-quarter commitments); the roadshow and enablement log with the adoption each session produced; action tracking to closure; a log of every change.</li>
+  </ol>
+  <p>A fourth step, agency tiering and a service model driven by the score (Strategic, Healthy, Watch, At risk), is described in the scorer and not built out further here.</p>
+
+  <h2>Why this, for this role</h2>
+  <p>The Associate Director of Ads Sales (Agency Partnerships) posting asks for an agency go-to-market across UAE, KSA and Egypt and the big holding groups, annual JBPs and reseller models, a team of Agency Partner Managers, and an operating rhythm measured by pipeline coverage, JBP attainment, QBRs, roadshows and solution adoption. The posting also asks for experience integrating AI tools into workflows.</p>
+  <p>The desk research behind this proposal found no vendor selling JBP attainment tracking, pipeline coverage by agency and market, or QBR pack generation to an ads sales team; the public pages of the retail-media and ads platforms reviewed describe self-serve buying, measurement and ad operations, and teams run the agency-relationship numbers in a CRM plus a BI tool or spreadsheets. Those numbers live in exports until someone builds the layer that holds them. This is a working sketch of that layer: how I would run the function in month one, with the data model the team would fill from its own CRM.</p>
+
+  <h2>Design rules, carried from the scorer</h2>
+  <ul>
+    <li><b>No invented figures inside the data.</b> A missing input is blank and flagged. A zero is a real zero. Agency D has no pipeline in the CRM, so its coverage is "unknown", not 0.</li>
+    <li><b>Stale data is flagged.</b> Every figure carries an as-of date and a source. Older than the limit (editable), it is flagged for a refresh before the QBR. Manual entries are marked.</li>
+    <li><b>Confidence badges.</b> High, Medium, Low per row, from completeness, freshness and source.</li>
+    <li><b>Every number explains itself.</b> Click a figure to see the inputs and the arithmetic behind it.</li>
+    <li><b>Rules are editable and visible.</b> Weights, thresholds and stage probabilities are controls on the page, so the team agrees the rules once and argues about numbers, not opinions. Each change is logged.</li>
+    <li><b>Actions have owners and get closed.</b> Every recommended action is a threshold being crossed; it names the partner manager and has a done checkbox. Open counts sit in the headline figures.</li>
+    <li><b>Reason codes are chosen by people.</b> The tool computes the variance; the partner manager picks why. It never guesses.</li>
+    <li><b>One dataset.</b> The scorer's target and actual per agency are the sums of the JBP rows by market; its QBR flag reads the QBR calendar; its current-quarter pipeline is the sum of the agency's open deals. The pages cannot disagree.</li>
+    <li><b>The language model writes words, never figures.</b> "Copy LLM prompt" builds a prompt from the facts on the page and instructs the model not to add or infer a number. Nothing is sent anywhere by this site.</li>
+  </ul>
+
+  <h2>What it is not</h2>
+  <p>Not an ad server, not a self-serve buying portal, not a measurement product. Those are platform decisions. This is the commercial layer on top, and it would work with whatever CRM and ad-server exports exist: CSV first, API later. It has no backend, no accounts and no tracking; edits live in the visitor's browser only.</p>
+
+  <h2>With real data, next</h2>
+  <ul>
+    <li>Nightly CRM and ad-server pull with a source stamp per field, replacing the invented sample.</li>
+    <li>Edits made on the scorer flowing back into the JBP rows (today the scorer derives from the JBPs, not the other way).</li>
+    <li>Score deltas quarter on quarter, tiering driving the service model, and relationship mapping (who at each agency owns which client).</li>
+    <li>A two-minute walkthrough and a one-page summary for the leadership review.</li>
+  </ul>
+
+  <h2>About the author</h2>
+  <p>Ravi Singhal is the founder of Keyva and MangoReply, two products built end to end with AI and the data-integrity rules this layer inherits. He was previously Managing Director at Aleph Group, managing the Partner Director teams for Meta, Google, Spotify and Httpool Native: the agency relationships this role describes, from the platform side. <a href="https://www.linkedin.com/in/ravisgl">linkedin.com/in/ravisgl</a></p>
+  <p class="note">Static HTML, CSS and JavaScript; Chart.js from cdnjs with integrity hashes; no build step, no backend. Code at github.com/sravinp2026/partner-performance-scorer.</p>
+  </div>
+  <footer id="foot"></footer>
+</main>
+<script>PD.mountChrome("Method");</script>
+</body>
+</html>
