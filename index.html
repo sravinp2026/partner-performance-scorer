@@ -4,202 +4,231 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Partner Performance Scorer</title>
-<meta name="description" content="Scores agency partners for a retail-media ads business and recommends the next action for each. Demo with dummy data.">
+<meta name="description" content="Scores agency partners for a retail-media ads business, explains every score, flags thin or stale data, and tracks the agreed actions to closure. Demo with invented data.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
 <style>
-:root{--bg:#f6f7f5;--card:#fff;--ink:#17201c;--muted:#5f6b66;--line:#e2e6e3;--brand:#0b4f3c;--brand2:#1aa37a;--gold:#c58a1a;--red:#b5392f;--amber:#c58a1a;--green:#1f8a5b;--blue:#2c5fa8}
+:root{--bg:#f6f7f5;--card:#fff;--ink:#17201c;--muted:#5f6b66;--line:#e2e6e3;--brand:#0b4f3c;--brand2:#1aa37a;--soft:#eef4f1;--red:#b5392f;--amber:#c58a1a;--green:#1f8a5b;--blue:#2c5fa8;--grey:#7c8884}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111614;--card:#1a211e;--ink:#e8ece9;--muted:#9aa5a0;--line:#2b3430;--brand:#0f6b52;--soft:#1f2a25}}
+:root[data-theme=dark]{--bg:#111614;--card:#1a211e;--ink:#e8ece9;--muted:#9aa5a0;--line:#2b3430;--brand:#0f6b52;--soft:#1f2a25}
 *{box-sizing:border-box}body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-header{background:var(--brand);color:#fff;padding:22px 24px}header h1{margin:0;font-size:22px}header p{margin:4px 0 0;opacity:.85;font-size:13px}
-main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
-.grid{display:grid;gap:16px;grid-template-columns:1fr}
-@media(min-width:900px){.grid.two{grid-template-columns:300px minmax(0,1fr)}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
-.card h2{margin:0 0 10px;font-size:15px;color:var(--brand)}
+header{background:var(--brand);color:#fff;padding:18px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:21px}header p{margin:3px 0 0;opacity:.85;font-size:13px;max-width:760px}
+.qsel{display:flex;gap:8px;align-items:center;font-size:13px}.qsel select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff}
+main{max-width:1240px;margin:0 auto;padding:18px 16px 60px}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}.grid>div{min-width:0}@media(min-width:960px){.grid.two{grid-template-columns:300px minmax(0,1fr)}}
+.chart{position:relative;min-width:0}canvas{max-width:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}.card+.card{margin-top:16px}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--brand);display:flex;justify-content:space-between;align-items:center;gap:8px}.card h2 small{font-weight:400;color:var(--muted);font-size:12px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}.kpi b{display:block;font-size:22px}.kpi span{color:var(--muted);font-size:12px}
-label.w{display:grid;grid-template-columns:1fr 34px;grid-template-areas:"t o" "r r";align-items:center;gap:2px 8px;margin:8px 0;font-size:13px}label.w input{grid-area:r}label.w output{grid-area:o}label.w input{width:100%}label.w output{text-align:right;font-variant-numeric:tabular-nums}
-.sum{font-size:12px;color:var(--muted);margin-top:6px}.sum.bad{color:var(--red)}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);cursor:pointer;user-select:none}
-td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;font-weight:700}
-.tier{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:#fff}
-.t-Strategic{background:var(--green)}.t-Healthy{background:var(--blue)}.t-Watch{background:var(--amber)}.t-At.risk,.t-Atrisk{background:var(--red)}
-.bars{display:grid;gap:3px;min-width:120px}.bar{height:6px;background:#eef1ee;border-radius:3px;position:relative}.bar i{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--brand2)}
-.bar small{position:absolute;right:-2px;top:-9px;font-size:9px;color:var(--muted)}
-ul.acts{margin:0;padding-left:16px;min-width:220px}ul.acts li{margin:2px 0}
-.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}button,.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}button.sec{background:#fff;color:var(--brand)}
-input.cell{width:100%;border:1px solid transparent;background:transparent;padding:3px 4px;border-radius:4px;font:inherit}input.cell:focus{border-color:var(--brand2);background:#fff;outline:none}
-input.cell[type=number]{width:72px;text-align:right}
-details summary{cursor:pointer;color:var(--brand);font-weight:600}
-textarea{width:100%;min-height:150px;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:7px;padding:8px}
-.note{font-size:12px;color:var(--muted)}.chart{height:220px}
-footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
-.row-At.risk td:first-child{border-left:3px solid var(--red)}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111614;--card:#1a211e;--ink:#e8ece9;--muted:#9aa5a0;--line:#2b3430;--brand:#0f6b52}}
-:root[data-theme=dark]{--bg:#111614;--card:#1a211e;--ink:#e8ece9;--muted:#9aa5a0;--line:#2b3430;--brand:#0f6b52}
+label.w{display:grid;grid-template-columns:1fr 34px;grid-template-areas:"t o" "r r";align-items:center;gap:2px 8px;margin:8px 0;font-size:13px}label.w input{grid-area:r;width:100%}label.w output{grid-area:o;text-align:right;font-variant-numeric:tabular-nums}
+.rule{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center;font-size:13px;margin:6px 0}.rule input{width:100%;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);user-select:none}th.sort{cursor:pointer}
+td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;font-weight:700}.score.na{color:var(--muted);font-size:14px}
+.tier,.conf{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+.t-Strategic{background:var(--green)}.t-Healthy{background:var(--blue)}.t-Watch{background:var(--amber)}.t-Atrisk{background:var(--red)}.t-Notscored{background:var(--grey)}
+.c-High{background:var(--green)}.c-Medium{background:var(--amber)}.c-Low{background:var(--red)}
+.bars{display:grid;gap:3px;min-width:120px}.bar{height:6px;background:var(--soft);border-radius:3px;position:relative}.bar i{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--brand2)}.bar.na{background:repeating-linear-gradient(90deg,var(--soft) 0 4px,transparent 4px 7px)}
+ul.acts{margin:0;padding-left:0;list-style:none;min-width:240px}ul.acts li{margin:3px 0;display:flex;gap:6px;align-items:flex-start}ul.acts li.done span{text-decoration:line-through;color:var(--muted)}ul.acts input{margin-top:3px}
+.flag{font-size:11px;color:var(--amber);display:block}.flag.red{color:var(--red)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}button,.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}button.sec,.btn.sec{background:var(--card);color:var(--brand)}button.sm{padding:2px 8px;font-size:12px}
+input.cell{width:100%;border:1px solid transparent;background:transparent;padding:3px 4px;border-radius:4px;font:inherit;color:var(--ink)}input.cell:focus{border-color:var(--brand2);background:var(--card);outline:none}input.cell[type=number]{width:74px;text-align:right}input.cell[type=date]{width:130px}
+input.cell.empty{background:var(--soft)}
+details summary{cursor:pointer;color:var(--brand);font-weight:600}textarea{width:100%;min-height:170px;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:7px;padding:8px;background:var(--card);color:var(--ink)}
+.note{font-size:12px;color:var(--muted)}.chart{height:220px}.spark{width:70px;height:22px;vertical-align:middle}
+.why{background:var(--soft);border-radius:8px;padding:10px 12px;font-size:13px}.why table{font-size:12px}.why td,.why th{padding:4px 6px}
+.log{font:12px/1.5 ui-monospace,Menlo,monospace;max-height:180px;overflow:auto;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.row-Atrisk td:first-child{border-left:3px solid var(--red)}.row-Notscored td{opacity:.75}
+.banner{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px}
 </style>
 </head>
 <body>
 <header>
-  <h1>Partner Performance Scorer</h1>
-  <p>Scores each agency partner 0–100 from five commercial signals, sorts them into tiers, and recommends the next action. Edit any cell or weight and everything recomputes. Dummy data only.</p>
+  <div><h1>Partner Performance Scorer</h1>
+  <p>Scores each agency partner 0–100 from five commercial signals, explains every score, flags thin or stale data instead of scoring it, and tracks the agreed actions to closure. Edit any cell, weight or rule and everything recomputes. All data is invented.</p></div>
+  <div class="qsel"><label for="qpick">Review quarter</label><select id="qpick"></select></div>
 </header>
 <main>
+  <div class="banner" id="banner"></div>
   <div class="kpis" id="kpis"></div>
   <div class="grid two">
     <div>
-      <div class="card">
-        <h2>Weights</h2>
-        <div id="weights"></div>
-        <div class="sum" id="wsum"></div>
-        <p class="note">Signals are scaled 0–1 before weighting: attainment hits 1.0 at 120% of target, growth spans −20%…+30% quarter on quarter, breadth hits 1.0 at 15 active advertisers, adoption blends formats used (70%) and beta pilots (30%), pipeline hits 1.0 at 1.5× next-quarter target.</p>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <h2>Holding-group roll-up</h2>
-        <div class="chart"><canvas id="groupChart"></canvas></div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <h2>Data</h2>
-        <div class="btns">
-          <button class="sec" id="addRow">Add partner</button>
-          <button class="sec" id="loadSample">Reset sample</button>
-          <button class="sec" id="exportCsv">Export CSV</button>
-          <label class="btn sec" style="display:inline-block">Import CSV<input type="file" id="importCsv" accept=".csv" hidden></label>
-        </div>
-        <p class="note">CSV columns: partner, market, group, target, actual, last_actual, advertisers, advertisers_last, formats, pilots, qbr (yes/no), pipeline. Amounts in USD thousands. Nothing leaves your browser.</p>
-      </div>
+      <div class="card"><h2>Weights <small>sum shown below</small></h2><div id="weights"></div><div class="note" id="wsum"></div>
+        <p class="note">Signals are scaled 0–1 before weighting. A signal whose inputs are missing is not scored; its weight is redistributed across the others and the gap is shown, never filled with a zero.</p></div>
+      <div class="card"><h2>Rules <small>thresholds behind the actions</small></h2><div id="rules"></div>
+        <p class="note">Every recommended action is one of these thresholds being crossed. Change a rule and the action list updates, so the team can agree the rules once and argue about numbers, not opinions.</p></div>
+      <div class="card"><h2>Holding-group roll-up</h2><div class="chart"><canvas id="groupChart"></canvas></div><p class="note" id="groupNote"></p></div>
+      <div class="card"><h2>Data</h2>
+        <div class="btns"><button class="sec" id="addRow">Add partner</button><button class="sec" id="loadSample">Reset sample</button><button class="sec" id="exportCsv">Export CSV</button><label class="btn sec">Import CSV<input type="file" id="importCsv" accept=".csv" hidden></label><button class="sec" id="printPack">Print QBR pack</button></div>
+        <p class="note">CSV columns: partner, market, group, manager, quarter, target, actual, advertisers, formats, pilots, qbr (yes/no), pipeline, as_of (date), source. One row per partner per quarter. Amounts in USD thousands. Leave a cell empty when the figure is unknown. Nothing leaves your browser; the state is saved locally.</p></div>
+      <div class="card"><h2>Change log</h2><div class="log" id="log"></div></div>
     </div>
     <div>
-      <div class="card">
-        <h2>Partners, ranked</h2>
-        <div style="overflow:auto">
-        <table id="tbl">
-          <thead><tr>
-            <th data-k="partner">Partner</th><th data-k="score">Score</th><th>Signals</th><th>Recommended actions</th><th></th>
-          </tr></thead>
-          <tbody></tbody>
-        </table>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <h2>Edit inputs</h2>
-        <div style="overflow:auto">
-        <table id="edit">
-          <thead><tr><th>Partner</th><th>Market</th><th>Group</th><th>Target</th><th>Actual</th><th>Last Q</th><th>Advs</th><th>Advs last</th><th>Formats</th><th>Pilots</th><th>QBR</th><th>Pipeline</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <h2>QBR narrative</h2>
-        <p class="note">Pick a partner. The app drafts the quarterly summary from the numbers above, and gives you the same facts as a prompt you can paste into Claude or ChatGPT for a longer narrative. The model only writes around the numbers; it never invents them.</p>
-        <div class="btns"><select id="narrPick"></select><button class="sec" id="copyPrompt">Copy LLM prompt</button></div>
-        <textarea id="narr" readonly></textarea>
-      </div>
-      <details class="card" style="margin-top:16px"><summary>Method and design choices</summary>
-        <p><b>Why a weighted sum and plain rules.</b> Partner managers can argue with a weight; they cannot argue with a black box. Every recommended action traces to one number crossing one threshold, so a QBR can start from "here is why".</p>
-        <p><b>Actions map to motions the team already runs:</b> JBP reset, QBR, roadshow for lapsed clients, format enablement, beta-pilot invitation, pipeline-planning review, target raise and multi-market expansion.</p>
-        <p><b>What I would do next with real data:</b> pull revenue and pipeline from the CRM nightly, add holding-group and market roll-ups to the leadership review, track score deltas quarter on quarter, and use an LLM for the narrative only.</p>
-        <p class="note">Built for Careem Ads' Associate Director of Ads Sales application by Ravi Singhal. Single HTML file, no backend, no tracking. Source on GitHub.</p>
-      </details>
+      <div class="card"><h2>Partners, ranked <small id="rankNote"></small></h2>
+        <div style="overflow:auto"><table id="tbl"><thead><tr>
+          <th class="sort" data-k="partner">Partner</th><th class="sort" data-k="score">Score</th><th>Trend</th><th>Signals</th><th>Data confidence</th><th>Recommended actions</th><th></th></tr></thead><tbody></tbody></table></div></div>
+      <div class="card"><h2>Why this score <small>pick a partner</small></h2>
+        <div class="btns"><select id="whyPick"></select><button class="sec" id="copyPrompt">Copy LLM prompt</button></div>
+        <div class="why" id="why"></div>
+        <p class="note" style="margin-top:10px">The narrative below is drafted from the numbers above only. The prompt gives a model the same facts and tells it not to add any; the model writes the words, never the figures.</p>
+        <textarea id="narr" readonly></textarea></div>
+      <div class="card"><h2>Edit inputs <small id="editNote"></small></h2>
+        <div style="overflow:auto"><table id="edit"><thead><tr><th>Partner</th><th>Market</th><th>Group</th><th>Manager</th><th>Target</th><th>Actual</th><th>Advs</th><th>Formats</th><th>Pilots</th><th>QBR</th><th>Pipeline</th><th>As of</th><th>Source</th></tr></thead><tbody></tbody></table></div>
+        <p class="note">Shaded cells are empty on purpose: the figure is unknown for this quarter and will not be scored. Growth compares this quarter with the same partner's previous quarter only; a partner with no previous quarter has no growth signal.</p></div>
+      <details class="card"><summary>Method, and what was learnt building it</summary>
+        <p><b>No invented figures.</b> A missing input leaves the signal unscored and visibly blank. A zero is a real zero. This is the rule that kept Keyva's property data trustworthy, and it is the rule here.</p>
+        <p><b>Thin data is flagged, not averaged away.</b> Growth on a base under the floor (see rules) is unreliable and is marked low confidence. A partner with fewer than two quarters is scored but shown as "new", and figures older than the staleness limit are flagged for a refresh before the QBR.</p>
+        <p><b>Like with like.</b> Scores compare one quarter with the same partner's previous quarter. The ranking never mixes quarters, and holding-group totals only add partners that have a figure for the review quarter.</p>
+        <p><b>Every number explains itself.</b> "Why this score" shows the raw inputs, the scaled signal, the weight and the threshold behind each action, so a QBR starts from evidence rather than a label.</p>
+        <p><b>Actions are tracked, not just recommended.</b> Each action has an owner (the partner manager) and a checkbox; the open count sits in the headline figures. Changes to inputs, weights and rules are logged.</p>
+        <p><b>Next, with real data:</b> nightly CRM and ad-server pull with a source stamp per field, market and holding-group roll-ups for the leadership review, score deltas quarter on quarter, and an LLM for the narrative only.</p>
+        <p class="note">Built by Ravi Singhal for Careem Ads' AI challenge 1. Single HTML file, no backend, no tracking. Code at github.com/sravinp2026/partner-performance-scorer.</p></details>
     </div>
   </div>
-  <footer>Partner Performance Scorer · dummy data · Ravi Singhal · <a href="https://www.linkedin.com/in/ravisgl">linkedin.com/in/ravisgl</a></footer>
+  <footer>Partner Performance Scorer · invented data · Ravi Singhal · <a href="https://www.linkedin.com/in/ravisgl">linkedin.com/in/ravisgl</a></footer>
 </main>
 <script>
+const TODAY="2026-10-03";
+const QUARTERS=["2025-Q4","2026-Q1","2026-Q2","2026-Q3"];
+// partner, market, group, manager, then per quarter [target, actual, adv, formats, pilots, qbr, pipeline, asOf, source]; null = unknown
 const SAMPLE=[
- ["Agency A","UAE","Group 1",900,1010,820,14,11,4,2,true,1400],
- ["Agency B","UAE","Group 2",700,520,640,8,9,2,0,true,600],
- ["Agency C","KSA","Group 1",1200,1130,980,17,14,3,1,true,1500],
- ["Agency D","KSA","Group 3",800,310,450,5,8,1,0,false,250],
- ["Agency E","Egypt","Group 2",400,455,300,9,6,3,1,true,700],
- ["Agency F","Egypt","Group 4",350,140,160,3,3,1,0,false,120],
- ["Agency G","UAE","Group 4",600,610,590,10,10,2,0,true,640],
- ["Agency H","KSA","Group 5",1000,480,700,7,12,2,0,true,500],
+ ["Agency A","UAE","Group 1","Sara",{"2025-Q4":[700,650,9,2,0,true,900,"2026-01-05","CRM"],"2026-Q1":[800,720,11,3,1,true,1100,"2026-04-04","CRM"],"2026-Q2":[850,820,11,3,1,true,1250,"2026-07-03","CRM"],"2026-Q3":[900,1010,14,4,2,true,1400,"2026-10-02","CRM"]}],
+ ["Agency B","UAE","Group 2","Sara",{"2025-Q4":[600,610,10,2,0,true,700,"2026-01-05","CRM"],"2026-Q1":[650,590,9,2,0,true,680,"2026-04-04","CRM"],"2026-Q2":[700,640,9,2,0,true,650,"2026-07-03","CRM"],"2026-Q3":[700,520,8,2,0,true,600,"2026-10-02","CRM"]}],
+ ["Agency C","KSA","Group 1","Faisal",{"2025-Q4":[900,870,12,2,0,true,1100,"2026-01-05","CRM"],"2026-Q1":[1000,940,13,3,1,true,1300,"2026-04-04","CRM"],"2026-Q2":[1100,980,14,3,1,true,1400,"2026-07-03","CRM"],"2026-Q3":[1200,1130,17,3,1,true,1500,"2026-10-02","CRM"]}],
+ ["Agency D","KSA","Group 3","Faisal",{"2025-Q4":[600,520,8,1,0,true,600,"2026-01-05","CRM"],"2026-Q1":[700,480,8,1,0,false,500,"2026-04-04","CRM"],"2026-Q2":[800,450,8,1,0,false,400,"2026-07-03","CRM"],"2026-Q3":[800,310,5,1,0,false,null,"2026-10-02","CRM"]}],
+ ["Agency E","Egypt","Group 2","Nour",{"2025-Q4":[250,200,5,2,0,true,350,"2026-01-05","CRM"],"2026-Q1":[300,260,6,2,0,true,450,"2026-04-04","CRM"],"2026-Q2":[350,300,6,3,1,true,550,"2026-07-03","CRM"],"2026-Q3":[400,455,9,3,1,true,700,"2026-10-02","CRM"]}],
+ ["Agency F","Egypt","Group 4","Nour",{"2026-Q3":[350,140,3,1,0,false,120,"2026-10-01","Manual"]}],
+ ["Agency G","UAE","Group 4","Sara",{"2025-Q4":[550,540,10,2,0,true,600,"2026-01-05","CRM"],"2026-Q1":[600,580,10,2,0,true,620,"2026-04-04","CRM"],"2026-Q2":[600,590,10,2,0,true,630,"2026-07-03","CRM"],"2026-Q3":[600,610,10,2,0,true,640,"2026-10-02","CRM"]}],
+ ["Agency H","KSA","Group 5","Faisal",{"2025-Q4":[800,790,12,2,0,true,900,"2026-01-05","CRM"],"2026-Q1":[900,760,12,2,0,true,850,"2026-04-04","CRM"],"2026-Q2":[1000,700,12,2,0,true,700,"2026-07-03","CRM"],"2026-Q3":[1000,480,7,2,0,true,500,"2026-08-12","Manual"]}],
 ];
-const KEYS=["partner","market","group","target","actual","last","adv","advLast","formats","pilots","qbr","pipeline"];
+const QK=["target","actual","adv","formats","pilots","qbr","pipeline","asOf","source"];
 const W_DEF={attainment:35,growth:20,breadth:15,adoption:15,pipeline:15};
 const W_LABEL={attainment:"Revenue attainment",growth:"Quarter-on-quarter growth",breadth:"Active-advertiser breadth",adoption:"Format and pilot adoption",pipeline:"Pipeline cover"};
-let rows=[],W={...W_DEF},sortKey="score",sortDir=-1;
+const R_DEF={attainFloor:80,pipeCover:1.2,lowFormats:2,outperform:105,growthBase:100,staleDays:45,advFull:15};
+const R_LABEL={attainFloor:"Recovery JBP when attainment below (%)",pipeCover:"Pipeline cover review below (× target)",lowFormats:"Enablement when formats used ≤",outperform:"Raise target when attainment above (%)",growthBase:"Growth unreliable when last quarter below ($k)",staleDays:"Flag figures older than (days)",advFull:"Breadth full marks at (advertisers)"};
+let S={partners:[],W:{...W_DEF},R:{...R_DEF},done:{},log:[],q:"2026-Q3"};
 const clip=(x,lo=0,hi=1)=>Math.max(lo,Math.min(hi,x));
-const load=()=>{try{const s=JSON.parse(localStorage.getItem("pps")||"null");if(s&&s.rows&&s.W){rows=s.rows;W=s.W;return}}catch(e){}reset()};
-const save=()=>{try{localStorage.setItem("pps",JSON.stringify({rows,W}))}catch(e){}};
-function reset(){rows=SAMPLE.map(r=>Object.fromEntries(KEYS.map((k,i)=>[k,r[i]])));W={...W_DEF}}
-function signals(p){const t=+p.target||1,a=+p.actual||0,l=+p.last||0;return{
- attainment:clip(a/t/1.2),
- growth:l?clip((a/l-0.8)/0.5):0.5,
- breadth:clip((+p.adv||0)/15),
- adoption:clip(((+p.formats||0)/4)*0.7+(Math.min(+p.pilots||0,2)/2)*0.3),
- pipeline:clip((+p.pipeline||0)/(t*1.5))}}
-function score(p){const s=signals(p);const tw=Object.values(W).reduce((x,y)=>x+y,0)||1;return{s,total:Object.keys(W).reduce((acc,k)=>acc+s[k]*W[k],0)*100/tw}}
-const tier=t=>t>=75?"Strategic":t>=55?"Healthy":t>=40?"Watch":"At risk";
-function actions(p,s){const t=+p.target||1,a=+p.actual||0,out=[];
- if(!p.qbr)out.push("Hold a QBR within 2 weeks; none held this quarter");
- if(a/t<0.8)out.push(`Revenue at ${Math.round(a/t*100)}% of target: agree a recovery JBP with the agency lead`);
- if(+p.adv<+p.advLast)out.push(`Active advertisers fell ${p.advLast}→${p.adv}: run a roadshow for the lapsed clients`);
- if(+p.formats<=2)out.push("Low format adoption: enablement session on the formats not yet used");
- if(+p.pilots===0&&a/t>=0.9)out.push("Healthy but no beta pilots: invite to the next innovation pilot");
- if(+p.pipeline<t*1.2)out.push("Pipeline cover below 1.2× next target: pipeline-planning review");
- if(a/t>=1.05&&s.growth>0.6)out.push("Outperforming: raise the target and discuss a multi-market expansion plan");
- return out.length?out:["Maintain the operating rhythm"]}
-const fmt=n=>n.toLocaleString("en-US");
-let chart;
+const isNum=v=>v!==null&&v!==undefined&&v!==""&&!isNaN(+v);
+const fmt=n=>(+n).toLocaleString("en-US");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const daysBetween=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+function reset(){S.partners=SAMPLE.map((r,i)=>({id:"p"+i,partner:r[0],market:r[1],group:r[2],manager:r[3],hist:Object.fromEntries(Object.entries(r[4]).map(([q,v])=>[q,Object.fromEntries(QK.map((k,j)=>[k,v[j]]))]))}));S.W={...W_DEF};S.R={...R_DEF};S.done={};S.log=[];S.q="2026-Q3";logIt("Sample data loaded")}
+function load(){try{const s=JSON.parse(localStorage.getItem("pps2")||"null");if(s&&s.partners)S=s;else reset()}catch(e){reset()}}
+function save(){try{localStorage.setItem("pps2",JSON.stringify(S))}catch(e){}}
+function logIt(msg){S.log.unshift(`${new Date().toISOString().slice(0,16).replace("T"," ")}  ${msg}`);S.log=S.log.slice(0,60)}
+const prevQ=q=>{const i=QUARTERS.indexOf(q);return i>0?QUARTERS[i-1]:null};
+function evaluate(p,q){
+ const d=p.hist[q];if(!d)return null;const pq=prevQ(q),pd=pq?p.hist[pq]:null;const R=S.R;
+ const s={},na={},flags=[];
+ if(isNum(d.target)&&isNum(d.actual)&&+d.target>0)s.attainment=clip(+d.actual/+d.target/1.2);else na.attainment="target or actual missing";
+ if(pd&&isNum(pd.actual)&&isNum(d.actual)&&+pd.actual>0){s.growth=clip((+d.actual/+pd.actual-0.8)/0.5);if(+pd.actual<R.growthBase)flags.push(`growth measured on a small base ($${fmt(pd.actual)}k last quarter)`)}else na.growth=pd?"last quarter's revenue missing":"no previous quarter";
+ if(isNum(d.adv))s.breadth=clip(+d.adv/R.advFull);else na.breadth="advertiser count missing";
+ if(isNum(d.formats)||isNum(d.pilots))s.adoption=clip(((+d.formats||0)/4)*0.7+(Math.min(+d.pilots||0,2)/2)*0.3);else na.adoption="formats and pilots missing";
+ if(isNum(d.pipeline)&&isNum(d.target)&&+d.target>0)s.pipeline=clip(+d.pipeline/(+d.target*1.5));else na.pipeline="pipeline or target missing";
+ const scoredKeys=Object.keys(S.W).filter(k=>k in s);const tw=scoredKeys.reduce((x,k)=>x+S.W[k],0);
+ const total=tw>0&&("attainment" in s)?scoredKeys.reduce((x,k)=>x+s[k]*S.W[k],0)*100/tw:null;
+ const nQ=Object.keys(p.hist).length;if(nQ<2)flags.push("new partner: one quarter of data");
+ const age=d.asOf?daysBetween(d.asOf,TODAY):null;if(age===null)flags.push("no as-of date");else if(age>R.staleDays)flags.push(`figures are ${age} days old (${d.source||"source unknown"})`);
+ if(d.source&&/manual/i.test(d.source))flags.push("manually entered, not from the CRM");
+ const missing=Object.keys(na).length;if(missing)flags.push(`${missing} signal${missing>1?"s":""} not scored`);
+ const conf=total===null?"Low":(missing>=2||(age!==null&&age>R.staleDays)||flags.some(f=>f.startsWith("growth measured")))?"Low":(missing||nQ<2||flags.some(f=>f.startsWith("manually")))?"Medium":"High";
+ const tier=total===null?"Not scored":total>=75?"Strategic":total>=55?"Healthy":total>=40?"Watch":"At risk";
+ const acts=actions(p,d,pd,s,na,q);
+ return{p,d,pd,s,na,flags,total,tier,conf,acts,age};
+}
+function actions(p,d,pd,s,na,q){const R=S.R,out=[];const att=isNum(d.target)&&isNum(d.actual)&&+d.target>0?+d.actual/+d.target*100:null;
+ const add=(id,text,rule)=>out.push({id,text,rule,key:`${p.id}|${q}|${id}`});
+ if(d.qbr===false||d.qbr==="no")add("qbr","Hold a QBR within 2 weeks; none held this quarter","QBR held = no");
+ if(att!==null&&att<R.attainFloor)add("jbp",`Revenue at ${Math.round(att)}% of target: agree a recovery JBP with the agency lead`,`attainment ${Math.round(att)}% < ${R.attainFloor}%`);
+ if(pd&&isNum(pd.adv)&&isNum(d.adv)&&+d.adv<+pd.adv)add("roadshow",`Active advertisers fell ${pd.adv}→${d.adv}: run a roadshow for the lapsed clients`,`advertisers ${d.adv} < ${pd.adv} last quarter`);
+ if(isNum(d.formats)&&+d.formats<=R.lowFormats)add("enable","Low format adoption: enablement session on the formats not yet used",`formats ${d.formats} ≤ ${R.lowFormats}`);
+ if(isNum(d.pilots)&&+d.pilots===0&&att!==null&&att>=90)add("pilot","Healthy but no beta pilots: invite to the next innovation pilot","pilots 0 and attainment ≥ 90%");
+ if(isNum(d.pipeline)&&isNum(d.target)&&+d.pipeline<+d.target*R.pipeCover)add("pipe",`Pipeline cover ${(+d.pipeline/+d.target).toFixed(1)}×, below ${R.pipeCover}× next target: pipeline-planning review`,`pipeline ${fmt(d.pipeline)} < ${R.pipeCover} × ${fmt(d.target)}`);
+ if(att!==null&&att>=R.outperform&&(s.growth??0)>0.6)add("raise","Outperforming: raise the target and discuss a multi-market expansion plan",`attainment ≥ ${R.outperform}% and growth signal > 0.6`);
+ Object.entries(na).forEach(([k,why])=>add("fill-"+k,`Fill the gap before the QBR: ${W_LABEL[k].toLowerCase()} not scored (${why})`,"missing input"));
+ if(!out.length)add("ok","Maintain the operating rhythm","no threshold crossed");
+ return out;}
+let chart,sortKey="score",sortDir=-1;
+function spark(p){const vals=QUARTERS.map(q=>{const e=p.hist[q]?evaluate(p,q):null;return e&&e.total!==null?e.total:null});if(vals.filter(v=>v!==null).length<2)return `<span class="note">${vals.filter(v=>v!==null).length?"one point":"—"}</span>`;
+ const w=70,h=22,n=vals.length;const pts=vals.map((v,i)=>v===null?null:[(i/(n-1))*(w-4)+2,h-2-(v/100)*(h-4)]);let dpath="",prev=null;pts.forEach(pt=>{if(!pt){prev=null;return}dpath+=(prev?"L":"M")+pt[0].toFixed(1)+" "+pt[1].toFixed(1);prev=pt});
+ return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-label="score trend"><path d="${dpath}" fill="none" stroke="var(--brand2)" stroke-width="1.6"/>${pts.map(pt=>pt?`<circle cx="${pt[0]}" cy="${pt[1]}" r="1.8" fill="var(--brand2)"/>`:"").join("")}</svg>`}
 function render(){
- const scored=rows.map((p,i)=>{const {s,total}=score(p);return{p,i,s,total,tier:tier(total),acts:actions(p,s)}});
- scored.sort((a,b)=>{if(sortKey==="partner")return sortDir*a.p.partner.localeCompare(b.p.partner);return sortDir*(a.total-b.total)});
- // KPIs
- const tot=rows.reduce((x,p)=>x+(+p.actual||0),0),tgt=rows.reduce((x,p)=>x+(+p.target||0),0);
- const risk=scored.filter(x=>x.tier==="At risk").length,strat=scored.filter(x=>x.tier==="Strategic").length;
+ const q=S.q;const evals=S.partners.map(p=>evaluate(p,q)).filter(Boolean);const absent=S.partners.length-evals.length;
+ evals.sort((a,b)=>{if(sortKey==="partner")return sortDir*a.p.partner.localeCompare(b.p.partner);const x=a.total??-1,y=b.total??-1;return sortDir*(x-y)});
+ document.getElementById("qpick").innerHTML=QUARTERS.map(x=>`<option ${x===q?"selected":""}>${x}</option>`).join("");
+ const tot=evals.reduce((x,e)=>x+(isNum(e.d.actual)?+e.d.actual:0),0),tgt=evals.reduce((x,e)=>x+(isNum(e.d.target)&&isNum(e.d.actual)?+e.d.target:0),0);
+ const openActs=evals.flatMap(e=>e.acts).filter(a=>a.id!=="ok"&&!S.done[a.key]).length;
+ const lowConf=evals.filter(e=>e.conf==="Low").length;
  document.getElementById("kpis").innerHTML=[
-  [`$${fmt(tot)}k`,"revenue this quarter, all partners"],[`${tgt?Math.round(tot/tgt*100):0}%`,"of combined target"],
-  [strat,"strategic partners"],[risk,"partners at risk"],[`$${fmt(rows.reduce((x,p)=>x+(+p.pipeline||0),0))}k`,"open pipeline"]
- ].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
- // weights
- const wd=document.getElementById("weights");if(!wd.children.length){wd.innerHTML=Object.keys(W).map(k=>`<label class="w">${W_LABEL[k]}<input type="range" min="0" max="60" data-w="${k}" value="${W[k]}"><output>${W[k]}</output></label>`).join("");
-  wd.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",e=>{W[e.target.dataset.w]=+e.target.value;e.target.nextElementSibling.value=e.target.value;save();render()}))}
- else wd.querySelectorAll("input").forEach(inp=>{inp.value=W[inp.dataset.w];inp.nextElementSibling.value=W[inp.dataset.w]});
- const tw=Object.values(W).reduce((x,y)=>x+y,0);const ws=document.getElementById("wsum");ws.textContent=`Weights total ${tw}${tw===100?"":" (normalised to 100 when scoring)"}`;ws.className="sum"+(tw?"":" bad");
- // ranked table
- document.querySelector("#tbl tbody").innerHTML=scored.map(x=>`<tr class="row-${x.tier}">
-  <td><b>${esc(x.p.partner)}</b><br><span class="note">${esc(x.p.market)} · ${esc(x.p.group)}</span></td>
-  <td class="num"><span class="score">${Math.round(x.total)}</span><br><span class="tier t-${x.tier.replace(" ","")}">${x.tier}</span></td>
-  <td><div class="bars">${Object.keys(W).map(k=>`<div class="bar" title="${W_LABEL[k]}: ${x.s[k].toFixed(2)}"><i style="width:${Math.round(x.s[k]*100)}%"></i></div>`).join("")}</div></td>
-  <td><ul class="acts">${x.acts.map(a=>`<li>${esc(a)}</li>`).join("")}</ul></td>
-  <td><button class="sec" data-del="${x.i}" title="Remove">×</button></td></tr>`).join("");
- // edit table
- document.querySelector("#edit tbody").innerHTML=rows.map((p,i)=>`<tr>${KEYS.map(k=>k==="qbr"?`<td><input type="checkbox" data-i="${i}" data-k="qbr" ${p.qbr?"checked":""}></td>`:
-  `<td><input class="cell" type="${["partner","market","group"].includes(k)?"text":"number"}" data-i="${i}" data-k="${k}" value="${esc(String(p[k]))}"></td>`).join("")}</tr>`).join("");
- // narrative
- const sel=document.getElementById("narrPick");const cur=sel.value;sel.innerHTML=scored.map(x=>`<option value="${x.i}">${esc(x.p.partner)}</option>`).join("");if([...sel.options].some(o=>o.value===cur))sel.value=cur;
- narrative(scored);
- // chart
- const groups={};scored.forEach(x=>{const g=groups[x.p.group]||(groups[x.p.group]={actual:0,target:0,n:0,score:0});g.actual+=+x.p.actual||0;g.target+=+x.p.target||0;g.n++;g.score+=x.total});
- const labels=Object.keys(groups).sort();
- const data={labels,datasets:[{label:"Actual ($k)",data:labels.map(g=>groups[g].actual),backgroundColor:"#1aa37a"},{label:"Target ($k)",data:labels.map(g=>groups[g].target),backgroundColor:"#c9d6d0"}]};
+  [`$${fmt(tot)}k`,`revenue in ${q}, partners with a figure`],[tgt?`${Math.round(tot/tgt*100)}%`:"—","of combined target (same partners)"],
+  [evals.filter(e=>e.tier==="Strategic").length,"strategic partners"],[evals.filter(e=>e.tier==="At risk").length,"partners at risk"],
+  [openActs,"open actions"],[lowConf,"partners with low data confidence"]].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+ document.getElementById("banner").innerHTML=`Reviewing <b>${q}</b> against ${prevQ(q)||"no previous quarter"}. ${evals.length} partner${evals.length!==1?"s":""} with data${absent?`, ${absent} without a row for this quarter (not shown, not counted)`:""}. Figures are USD thousands. Today is treated as ${TODAY} for staleness.`;
+ const wd=document.getElementById("weights");if(!wd.children.length){wd.innerHTML=Object.keys(S.W).map(k=>`<label class="w">${W_LABEL[k]}<input type="range" min="0" max="60" data-w="${k}" value="${S.W[k]}"><output>${S.W[k]}</output></label>`).join("");
+  wd.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{logIt(`Weight ${W_LABEL[e.target.dataset.w]} → ${e.target.value}`);render()}));
+  wd.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",e=>{S.W[e.target.dataset.w]=+e.target.value;e.target.nextElementSibling.value=e.target.value;render()}))}
+ else wd.querySelectorAll("input").forEach(inp=>{inp.value=S.W[inp.dataset.w];inp.nextElementSibling.value=S.W[inp.dataset.w]});
+ const tw=Object.values(S.W).reduce((x,y)=>x+y,0);document.getElementById("wsum").textContent=`Weights total ${tw}${tw===100?"":" (normalised to 100 when scoring)"}`;
+ const rd=document.getElementById("rules");if(!rd.children.length){rd.innerHTML=Object.keys(S.R).map(k=>`<label class="rule">${R_LABEL[k]}<input type="number" step="any" data-r="${k}" value="${S.R[k]}"></label>`).join("");rd.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{S.R[e.target.dataset.r]=+e.target.value;logIt(`Rule "${R_LABEL[e.target.dataset.r]}" → ${e.target.value}`);render()}))}else rd.querySelectorAll("input").forEach(inp=>inp.value=S.R[inp.dataset.r]);
+ document.getElementById("rankNote").textContent=`${q}, sorted by ${sortKey==="score"?"score":"name"}`;
+ document.querySelector("#tbl tbody").innerHTML=evals.map(e=>`<tr class="row-${e.tier.replace(/ /g,"")}">
+  <td><b>${esc(e.p.partner)}</b><br><span class="note">${esc(e.p.market)} · ${esc(e.p.group)} · ${esc(e.p.manager)}</span></td>
+  <td class="num">${e.total===null?`<span class="score na">not scored</span>`:`<span class="score">${Math.round(e.total)}</span>`}<br><span class="tier t-${e.tier.replace(/ /g,"")}">${e.tier}</span></td>
+  <td>${spark(e.p)}</td>
+  <td><div class="bars">${Object.keys(S.W).map(k=>k in e.s?`<div class="bar" title="${W_LABEL[k]}: ${e.s[k].toFixed(2)}"><i style="width:${Math.round(e.s[k]*100)}%"></i></div>`:`<div class="bar na" title="${W_LABEL[k]}: not scored (${e.na[k]})"></div>`).join("")}</div></td>
+  <td><span class="conf c-${e.conf}">${e.conf}</span>${e.flags.map(f=>`<span class="flag ${/old|not scored|no previous/.test(f)?"red":""}">${esc(f)}</span>`).join("")}</td>
+  <td><ul class="acts">${e.acts.map(a=>a.id==="ok"?`<li><span class="note">${esc(a.text)}</span></li>`:`<li class="${S.done[a.key]?"done":""}"><input type="checkbox" data-done="${a.key}" ${S.done[a.key]?"checked":""} title="${esc(a.rule)}"><span>${esc(a.text)}</span></li>`).join("")}</ul></td>
+  <td><button class="sec sm" data-del="${e.p.id}" title="Remove partner">×</button></td></tr>`).join("");
+ document.getElementById("editNote").textContent=q;
+ document.querySelector("#edit tbody").innerHTML=S.partners.map(p=>{const d=p.hist[q]||{};const has=!!p.hist[q];
+  const cell=(k,type)=>`<td><input class="cell ${isNum(d[k])||d[k]?"":"empty"}" type="${type}" data-id="${p.id}" data-k="${k}" value="${esc(d[k]??"")}" placeholder="—"></td>`;
+  return `<tr><td><input class="cell" type="text" data-id="${p.id}" data-k="partner" data-top="1" value="${esc(p.partner)}"></td><td><input class="cell" type="text" data-id="${p.id}" data-k="market" data-top="1" value="${esc(p.market)}"></td><td><input class="cell" type="text" data-id="${p.id}" data-k="group" data-top="1" value="${esc(p.group)}"></td><td><input class="cell" type="text" data-id="${p.id}" data-k="manager" data-top="1" value="${esc(p.manager)}"></td>
+   ${cell("target","number")}${cell("actual","number")}${cell("adv","number")}${cell("formats","number")}${cell("pilots","number")}<td><input type="checkbox" data-id="${p.id}" data-k="qbr" ${d.qbr===true||d.qbr==="yes"?"checked":""}></td>${cell("pipeline","number")}${cell("asOf","date")}${cell("source","text")}${has?"":`<td class="note">no row for ${q}; type a value to create it</td>`}</tr>`}).join("");
+ const sel=document.getElementById("whyPick");const cur=sel.value;sel.innerHTML=evals.map(e=>`<option value="${e.p.id}">${esc(e.p.partner)}</option>`).join("");if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+ why(evals);
+ const groups={};evals.forEach(e=>{if(!isNum(e.d.actual)||!isNum(e.d.target))return;const g=groups[e.p.group]||(groups[e.p.group]={actual:0,target:0,n:0});g.actual+=+e.d.actual;g.target+=+e.d.target;g.n++});
+ const labels=Object.keys(groups).sort();const data={labels,datasets:[{label:"Actual ($k)",data:labels.map(g=>groups[g].actual),backgroundColor:"#1aa37a"},{label:"Target ($k)",data:labels.map(g=>groups[g].target),backgroundColor:"#b9c9c1"}]};
+ document.getElementById("groupNote").textContent=`${q}; only partners with both target and actual are added (${Object.values(groups).reduce((x,g)=>x+g.n,0)} of ${evals.length}).`;
  if(chart){chart.data=data;chart.update()}else if(window.Chart){chart=new Chart(document.getElementById("groupChart"),{type:"bar",data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}})}
+ document.getElementById("log").innerHTML=S.log.map(esc).join("<br>")||"<span class='note'>no changes yet</span>";
  save();
 }
-function narrative(scored){const sel=document.getElementById("narrPick");const x=scored.find(y=>String(y.i)===sel.value)||scored[0];if(!x)return;const p=x.p,t=+p.target||1,a=+p.actual||0,l=+p.last||0;
- const text=`${p.partner} (${p.market}, ${p.group}) — quarterly partner summary
-Score ${Math.round(x.total)}/100, tier: ${x.tier}.
-Revenue $${fmt(a)}k against a $${fmt(t)}k target (${Math.round(a/t*100)}%), ${l?(a>=l?"up":"down")+" "+Math.abs(Math.round((a/l-1)*100))+"% on last quarter's $"+fmt(l)+"k":"no prior quarter"}.
-Active advertisers ${p.adv} (last quarter ${p.advLast}). Formats in use ${p.formats} of 4; beta pilots ${p.pilots}. QBR held this quarter: ${p.qbr?"yes":"no"}. Open pipeline $${fmt(+p.pipeline||0)}k (${(+p.pipeline/t).toFixed(1)}× target).
-Signals: ${Object.keys(W).map(k=>`${W_LABEL[k].toLowerCase()} ${x.s[k].toFixed(2)}`).join(", ")}.
-Recommended next actions:
-${x.acts.map(s=>"• "+s).join("\n")}`;
+function why(evals){const sel=document.getElementById("whyPick");const e=evals.find(x=>x.p.id===sel.value)||evals[0];if(!e){document.getElementById("why").innerHTML="";document.getElementById("narr").value="";return}
+ const d=e.d,pd=e.pd,R=S.R;const raw={attainment:isNum(d.actual)&&isNum(d.target)?`$${fmt(d.actual)}k of $${fmt(d.target)}k (${Math.round(+d.actual/+d.target*100)}%); full marks at 120%`:"—",growth:pd&&isNum(pd.actual)&&isNum(d.actual)?`$${fmt(pd.actual)}k → $${fmt(d.actual)}k (${(+d.actual/+pd.actual-1>=0?"+":"")+Math.round((+d.actual/+pd.actual-1)*100)}%); scale −20%…+30%`:"—",breadth:isNum(d.adv)?`${d.adv} active advertisers; full marks at ${R.advFull}`:"—",adoption:isNum(d.formats)||isNum(d.pilots)?`${d.formats??"?"} of 4 formats, ${d.pilots??"?"} beta pilots (70/30)`:"—",pipeline:isNum(d.pipeline)&&isNum(d.target)?`$${fmt(d.pipeline)}k, ${(+d.pipeline/+d.target).toFixed(2)}× target; full marks at 1.5×`:"—"};
+ const scoredW=Object.keys(S.W).filter(k=>k in e.s).reduce((x,k)=>x+S.W[k],0);
+ document.getElementById("why").innerHTML=`<b>${esc(e.p.partner)}</b>, ${S.q}: ${e.total===null?"not scored":`score <b>${Math.round(e.total)}</b>`} · ${e.tier} · data confidence ${e.conf}${e.flags.length?`<br><span class="note">${e.flags.map(esc).join(" · ")}</span>`:""}
+  <table><tr><th>Signal</th><th>Raw inputs</th><th>Scaled 0–1</th><th>Weight</th><th>Contribution</th></tr>${Object.keys(S.W).map(k=>`<tr><td>${W_LABEL[k]}</td><td>${raw[k]}</td><td>${k in e.s?e.s[k].toFixed(2):`<i>not scored: ${esc(e.na[k])}</i>`}</td><td>${S.W[k]}${k in e.s&&scoredW!==100?` → ${(S.W[k]*100/scoredW).toFixed(0)}`:""}</td><td>${k in e.s?(e.s[k]*S.W[k]*100/scoredW).toFixed(1):"—"}</td></tr>`).join("")}</table>
+  <div style="margin-top:8px"><b>Actions and the rule behind each</b><ul style="margin:4px 0 0;padding-left:16px">${e.acts.map(a=>`<li>${esc(a.text)} <span class="note">(${esc(a.rule)})</span></li>`).join("")}</ul></div>`;
+ const text=`${e.p.partner} (${e.p.market}, ${e.p.group}; partner manager ${e.p.manager}) — ${S.q} partner summary
+Score ${e.total===null?"not available":Math.round(e.total)+"/100"}, tier ${e.tier}, data confidence ${e.conf}${e.flags.length?" ("+e.flags.join("; ")+")":""}.
+${Object.keys(S.W).map(k=>`${W_LABEL[k]}: ${raw[k]}${k in e.s?"":" — not scored"}`).join("\n")}
+QBR held this quarter: ${d.qbr===true||d.qbr==="yes"?"yes":"no"}. Figures as of ${d.asOf||"unknown"} from ${d.source||"unknown source"}.
+Agreed next actions:
+${e.acts.map(a=>`• ${a.text}${S.done[a.key]?" (done)":""}`).join("\n")}`;
  document.getElementById("narr").value=text;
- document.getElementById("copyPrompt").onclick=()=>{const prompt=`You are writing a quarterly business review summary for an agency partner of a retail-media ads business. Use only the facts below; do not add numbers that are not given. Write 150 words for a senior agency lead: what went well, what did not, and the agreed next actions.\n\nFACTS\n${text}`;navigator.clipboard.writeText(prompt).then(()=>{const b=document.getElementById("copyPrompt");b.textContent="Copied";setTimeout(()=>b.textContent="Copy LLM prompt",1500)})}}
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-document.addEventListener("input",e=>{const el=e.target;if(el.dataset.k&&el.dataset.i!==undefined){const p=rows[+el.dataset.i];p[el.dataset.k]=el.type==="checkbox"?el.checked:el.type==="number"?+el.value:el.value;if(el.type==="checkbox"||el.type==="number")render();else {save();if(el.dataset.k==="partner"||el.dataset.k==="group"||el.dataset.k==="market")renderSoon()}}});
-let tmr;const renderSoon=()=>{clearTimeout(tmr);tmr=setTimeout(render,600)};
-document.addEventListener("click",e=>{if(e.target.dataset.del!==undefined){rows.splice(+e.target.dataset.del,1);render()}});
-document.querySelectorAll("#tbl th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=k==="partner"?1:-1}render()});
-document.getElementById("addRow").onclick=()=>{rows.push({partner:"New agency",market:"UAE",group:"Group 1",target:500,actual:0,last:0,adv:0,advLast:0,formats:0,pilots:0,qbr:false,pipeline:0});render()};
-document.getElementById("loadSample").onclick=()=>{reset();document.getElementById("weights").innerHTML="";render()};
-document.getElementById("narrPick").onchange=render;
-document.getElementById("exportCsv").onclick=()=>{const head="partner,market,group,target,actual,last_actual,advertisers,advertisers_last,formats,pilots,qbr,pipeline";const body=rows.map(p=>KEYS.map(k=>k==="qbr"?(p.qbr?"yes":"no"):String(p[k]).includes(",")?`"${p[k]}"`:p[k]).join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([head+"\n"+body],{type:"text/csv"}));a.download="partners.csv";a.click()};
-document.getElementById("importCsv").onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(txt=>{const lines=txt.trim().split(/\r?\n/);const hdr=lines.shift().split(",").map(s=>s.trim().toLowerCase());const map={partner:"partner",market:"market",group:"group",target:"target",actual:"actual",last_actual:"last",advertisers:"adv",advertisers_last:"advLast",formats:"formats",pilots:"pilots",qbr:"qbr",pipeline:"pipeline"};
- const out=[];for(const ln of lines){if(!ln.trim())continue;const cells=ln.match(/("([^"]|"")*"|[^,]*)(,|$)/g).map(c=>c.replace(/,$/,"").replace(/^"|"$/g,"").replace(/""/g,'"'));const p={};hdr.forEach((h,i)=>{const k=map[h];if(!k)return;const v=cells[i]??"";p[k]=k==="qbr"?/^(y|yes|true|1)$/i.test(v):["partner","market","group"].includes(k)?v:+v||0});if(p.partner)out.push(p)}
- if(out.length){rows=out;render()}else alert("No rows recognised. Check the column names.");e.target.value=""})};
+ document.getElementById("copyPrompt").onclick=()=>{navigator.clipboard.writeText(`You are writing a quarterly business review summary for an agency partner of a retail-media ads business. Use only the facts below. Do not add, round differently, or infer any number; if a figure is marked not scored or unknown, say so rather than estimate it. Write about 150 words for a senior agency lead: what went well, what did not, and the agreed next actions.\n\nFACTS\n${text}`).then(()=>{const b=document.getElementById("copyPrompt");b.textContent="Copied";setTimeout(()=>b.textContent="Copy LLM prompt",1500)})}}
+document.getElementById("qpick").onchange=e=>{S.q=e.target.value;render()};
+document.addEventListener("change",e=>{const el=e.target;
+ if(el.dataset.done){S.done[el.dataset.done]=el.checked;if(!el.checked)delete S.done[el.dataset.done];logIt(`${el.checked?"Closed":"Reopened"} action: ${el.nextElementSibling.textContent.slice(0,60)}`);render();return}
+ if(el.dataset.id&&el.dataset.k){const p=S.partners.find(x=>x.id===el.dataset.id);if(!p)return;
+  if(el.dataset.top){const old=p[el.dataset.k];p[el.dataset.k]=el.value;logIt(`${old} ${el.dataset.k} → ${el.value}`);render();return}
+  const q=S.q;if(!p.hist[q])p.hist[q]={target:null,actual:null,adv:null,formats:null,pilots:null,qbr:false,pipeline:null,asOf:null,source:"Manual"};
+  const old=p.hist[q][el.dataset.k];const v=el.type==="checkbox"?el.checked:el.type==="number"?(el.value===""?null:+el.value):(el.value===""?null:el.value);p.hist[q][el.dataset.k]=v;
+  logIt(`${p.partner} ${q} ${el.dataset.k}: ${old??"—"} → ${v??"—"}`);render()}});
+document.addEventListener("click",e=>{if(e.target.dataset.del){const p=S.partners.find(x=>x.id===e.target.dataset.del);if(p&&confirm(`Remove ${p.partner} and all its quarters?`)){S.partners=S.partners.filter(x=>x!==p);logIt(`Removed ${p.partner}`);render()}}});
+document.querySelectorAll("#tbl th.sort").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=k==="partner"?1:-1}render()});
+document.getElementById("addRow").onclick=()=>{const id="p"+Date.now();S.partners.push({id,partner:"New agency",market:"UAE",group:"Group 1",manager:"",hist:{[S.q]:{target:null,actual:null,adv:null,formats:null,pilots:null,qbr:false,pipeline:null,asOf:TODAY,source:"Manual"}}});logIt("Added partner");render()};
+document.getElementById("loadSample").onclick=()=>{if(confirm("Replace everything with the sample data?")){reset();document.getElementById("weights").innerHTML="";document.getElementById("rules").innerHTML="";render()}};
+document.getElementById("whyPick").onchange=render;
+document.getElementById("printPack").onclick=()=>window.print();
+document.getElementById("exportCsv").onclick=()=>{const head="partner,market,group,manager,quarter,target,actual,advertisers,formats,pilots,qbr,pipeline,as_of,source";const rows=[];S.partners.forEach(p=>Object.entries(p.hist).forEach(([q,d])=>rows.push([p.partner,p.market,p.group,p.manager,q,d.target,d.actual,d.adv,d.formats,d.pilots,d.qbr?"yes":"no",d.pipeline,d.asOf,d.source].map(v=>v===null||v===undefined?"":String(v).includes(",")?`"${v}"`:v).join(","))));
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([head+"\n"+rows.join("\n")],{type:"text/csv"}));a.download="partners.csv";a.click()};
+document.getElementById("importCsv").onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(txt=>{const lines=txt.trim().split(/\r?\n/);const hdr=lines.shift().split(",").map(s=>s.trim().toLowerCase());
+ const col={partner:"partner",market:"market",group:"group",manager:"manager",quarter:"quarter",target:"target",actual:"actual",advertisers:"adv",formats:"formats",pilots:"pilots",qbr:"qbr",pipeline:"pipeline",as_of:"asOf",source:"source"};
+ const byName={};let n=0;for(const ln of lines){if(!ln.trim())continue;const cells=ln.match(/("([^"]|"")*"|[^,]*)(,|$)/g).map(c=>c.replace(/,$/,"").replace(/^"|"$/g,"").replace(/""/g,'"'));const r={};hdr.forEach((h,i)=>{const k=col[h];if(k)r[k]=cells[i]??""});if(!r.partner||!r.quarter)continue;
+  const p=byName[r.partner]||(byName[r.partner]={id:"p"+(++n)+"_"+Date.now(),partner:r.partner,market:r.market||"",group:r.group||"",manager:r.manager||"",hist:{}});
+  const num=v=>v===""||v===undefined?null:(isNaN(+v)?null:+v);p.hist[r.quarter]={target:num(r.target),actual:num(r.actual),adv:num(r.adv),formats:num(r.formats),pilots:num(r.pilots),qbr:/^(y|yes|true|1)$/i.test(r.qbr||""),pipeline:num(r.pipeline),asOf:r.asOf||null,source:r.source||"CSV"}}
+ const ps=Object.values(byName);if(ps.length){S.partners=ps;const qs=[...new Set(ps.flatMap(p=>Object.keys(p.hist)))].sort();qs.forEach(q=>{if(!QUARTERS.includes(q))QUARTERS.push(q)});QUARTERS.sort();if(!qs.includes(S.q))S.q=qs[qs.length-1];logIt(`Imported ${ps.length} partners, ${lines.length} rows from CSV`);render()}else alert("No rows recognised. Check the column names.");e.target.value=""})};
 load();render();
 </script>
 </body>
