@@ -24,7 +24,7 @@ main{max-width:1240px;margin:0 auto;padding:18px 16px 60px}
 label.w{display:grid;grid-template-columns:1fr 34px;grid-template-areas:"t o" "r r";align-items:center;gap:2px 8px;margin:8px 0;font-size:13px}label.w input{grid-area:r;width:100%}label.w output{grid-area:o;text-align:right;font-variant-numeric:tabular-nums}
 .rule{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center;font-size:13px;margin:6px 0}.rule input{width:100%;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);user-select:none}th.sort{cursor:pointer}
-td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;font-weight:700}.score.na{color:var(--muted);font-size:14px}
+#tbl td:first-child{min-width:130px}#tbl td:first-child b{white-space:nowrap}td.num{text-align:right;font-variant-numeric:tabular-nums}.score{font-size:18px;font-weight:700}.score.na{color:var(--muted);font-size:14px}
 .tier,.conf{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
 .t-Strategic{background:var(--green)}.t-Healthy{background:var(--blue)}.t-Watch{background:var(--amber)}.t-Atrisk{background:var(--red)}.t-Notscored{background:var(--grey)}
 .c-High{background:var(--green)}.c-Medium{background:var(--amber)}.c-Low{background:var(--red)}
