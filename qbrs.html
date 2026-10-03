@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QBRs · Partner Desk</title>
+<meta name="description" content="QBR calendar per agency (held, due, overdue), a printable QBR pack generated from the record, and the roadshow and enablement log with adoption outcomes. Invented data.">
+<link rel="stylesheet" href="styles.css">
+<script src="data.js"></script>
+</head>
+<body>
+<nav id="nav" aria-label="Partner Desk"></nav>
+<header>
+  <div><h1>QBRs and operating rhythm</h1>
+  <p>A quarterly business review per agency per quarter: held, due or overdue. The QBR pack is written from the record, headline figures, trend, variance reasons, actions with owners and next-quarter commitments, and prints on one or two pages. Roadshows and enablement sessions are logged with the adoption they produced. All data is invented.</p></div>
+</header>
+<main>
+  <div class="banner" id="banner"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid two">
+    <div>
+      <div class="card"><h2>Rules</h2><div id="rules"></div><p class="note">A QBR is overdue when its due date has passed and no held date is recorded. The grace period only affects the "due soon" count.</p></div>
+      <div class="card"><h2>QBR actions <small id="aNote"></small></h2><ul class="acts" id="acts"></ul></div>
+      <div class="card"><h2>Change log</h2><div class="log" id="log"></div><div class="btns"><button class="sec" id="resetBtn">Reset sample</button></div></div>
+    </div>
+    <div>
+      <div class="card"><h2>QBR calendar <small>click a cell to record a held date</small></h2>
+        <div class="scroll"><table id="cal" class="cal"><thead></thead><tbody></tbody></table></div>
+        <p class="note">Held dates come from the calendar record; the Scorer's "QBR held" flag reads the same record. Recording a date here is stored in this browser only.</p></div>
+      <div class="card" id="packWrap"><h2 class="noprint">QBR pack <small>generated from the record</small></h2>
+        <div class="btns"><select id="packAgency"></select><select id="packQ"></select><button class="sec" id="printBtn">Print pack</button><button class="sec" id="copyBtn">Copy LLM prompt</button></div>
+        <div class="pack" id="pack"></div>
+        <p class="note noprint" style="margin-top:10px">The prompt gives a model the facts in the pack and tells it not to add any. The model writes the words; it never writes the figures.</p></div>
+      <div class="card"><h2>Roadshows and enablement <small id="eNote"></small></h2>
+        <div class="scroll"><table id="ev"><thead><tr><th>Date</th><th>Type</th><th>Market</th><th>Agencies</th><th>Topic</th><th class="r">Attendees</th><th>Adoption outcome</th></tr></thead><tbody></tbody></table></div>
+        <p class="note">An outcome is the adoption metric measured one quarter after the session. Sessions too recent to measure show a blank and a flag, not a zero.</p></div>
+    </div>
+  </div>
+  <footer id="foot"></footer>
+</main>
+<script>
+(function(){
+const {esc,fmt,money,isNum,pct}=PD;
+const S=PD.load();
+if(S.packAgency===undefined)S.packAgency="A";if(S.packQ===undefined)S.packQ="2026-Q3";
+const R_LABEL={qbrGraceDays:"Count a QBR as due soon within (days)"};
+const vcls=v=>v===null?"var-flat":v>0?"var-pos":v<0?"var-neg":"var-flat";
+function qbrActions(list){const out=[];list.forEach(x=>{const st=PD.qbrStatus(x);const a=PD.agency(x.agency);
+ if(st==="overdue")out.push({key:`qbr|${x.agency}|${x.quarter}`,text:`${a.name} ${x.quarter} QBR overdue since ${x.due}: hold it within 2 weeks`,owner:a.manager,rule:"due date passed, no held date"});
+ else if(st==="due"&&PD.daysBetween(PD.TODAY,x.due)<=S.qbrGraceDays)out.push({key:`qbr|${x.agency}|${x.quarter}|soon`,text:`${a.name} ${x.quarter} QBR due ${x.due}: confirm the slot and send the pack`,owner:a.manager,rule:`due within ${S.qbrGraceDays} days`})});return out}
+function packData(aid,q){
+ const a=PD.agency(aid);const rows=PD.jbpRows();const cur=rows.filter(r=>r.agency===aid&&r.quarter===q);const pq=PD.prevQ(q);const prev=pq?rows.filter(r=>r.agency===aid&&r.quarter===pq):[];
+ const sum=(rs,k)=>rs.every(r=>isNum(r[k]))&&rs.length?rs.reduce((s,r)=>s+ +r[k],0):null;
+ const C=sum(cur,"commit"),A=sum(cur,"attain"),PA=sum(prev,"attain");
+ const x=(PD.EXTRAS[aid]||{})[q];const qb=PD.qbrs().find(z=>z.agency===aid&&z.quarter===q);
+ const nq=PD.nextQ(q);const next=nq?rows.filter(r=>r.agency===aid&&r.quarter===nq):[];
+ const opps=PD.opps().filter(o=>o.agency===aid&&PD.isOpen(o));const anyOpp=PD.opps().some(o=>o.agency===aid);
+ const trend=PD.QUARTERS.map(z=>{const rs=rows.filter(r=>r.agency===aid&&r.quarter===z);return{q:z,c:sum(rs,"commit"),a:sum(rs,"attain"),has:rs.length>0}});
+ const acts=[];cur.forEach(r=>{const p=pct(r.attain,r.commit);if(p!==null&&p<S.lowAttain)acts.push({text:`${r.market} at ${p}% of commitment: agree a recovery plan`,owner:a.manager,key:r.key+"|recover"});if(p!==null&&Math.abs(p-100)>S.onPlanBand&&!r.reason)acts.push({text:`Pick a reason code for the ${r.market} variance`,owner:a.manager,key:r.key+"|reason"});if(!isNum(r.attain))acts.push({text:`Fill the ${r.market} attainment figure`,owner:a.manager,key:r.key+"|fill"})});
+ if(qb&&PD.qbrStatus(qb)==="overdue")acts.push({text:`Hold the overdue ${q} QBR`,owner:a.manager,key:`qbr|${aid}|${q}`});
+ if(!anyOpp)acts.push({text:"Enter the pipeline in the CRM",owner:a.manager,key:`pipe|${aid}|none`});
+ const events=PD.EVENTS.filter(e=>e.agencies.includes(aid));
+ return{a,q,cur,C,A,PA,x,qb,nq,next,opps,anyOpp,trend,acts,events,pq};
+}
+function packText(d){const att=pct(d.A,d.C);
+ return`${d.a.name} (${d.a.market} home market, ${d.a.group}; partner manager ${d.a.manager}) — ${d.q} QBR pack
+Commitment ${d.C===null?"unknown":"$"+fmt(d.C)+"k"}, attainment ${d.A===null?"unknown":"$"+fmt(d.A)+"k"} (${att===null?"not computed":att+"% of JBP"}). Previous quarter attainment ${d.PA===null?"unknown or no JBP":"$"+fmt(d.PA)+"k"}.
+By market: ${d.cur.map(r=>`${r.market} ${isNum(r.attain)?"$"+fmt(r.attain)+"k":"unknown"} of $${fmt(r.commit)}k${r.reason?" ("+r.reason+")":""}`).join("; ")||"no JBP rows"}.
+Active advertisers ${d.x?d.x[0]:"unknown"}, formats used ${d.x?d.x[1]:"unknown"}, pilots ${d.x?d.x[2]:"unknown"}. Figures as of ${d.x?d.x[4]:"unknown"} from ${d.x?d.x[5]:"unknown source"}.
+QBR ${d.qb?(d.qb.held?"held "+d.qb.held:PD.qbrStatus(d.qb)+", due "+d.qb.due):"not scheduled"}.
+Open pipeline: ${d.anyOpp?"$"+fmt(d.opps.reduce((s,o)=>s+o.value,0))+"k across "+d.opps.length+" deals":"unknown, no opportunities in the CRM"}.
+Next quarter (${d.nq||"none"}) commitments: ${d.next.map(r=>`${r.market} $${fmt(r.commit)}k`).join(", ")||"none recorded"}.
+Agreed actions:
+${d.acts.map(x=>`• ${x.text} (owner ${x.owner}${S.done[x.key]?", done":""})`).join("\n")||"• none open"}`}
+function renderPack(){const d=packData(S.packAgency,S.packQ);const att=pct(d.A,d.C);
+ document.getElementById("pack").innerHTML=`<div class="head"><div><b style="font-size:16px">${esc(d.a.name)}</b> · ${esc(d.q)} quarterly business review<br><span class="note">${esc(d.a.market)} home market · ${esc(d.a.group)} · partner manager ${esc(d.a.manager)} · invented data · generated ${PD.TODAY}</span></div><div class="note">${d.qb?`QBR <span class="pill s-${PD.qbrStatus(d.qb)}">${PD.qbrStatus(d.qb)}</span> ${d.qb.held?"on "+d.qb.held:"due "+d.qb.due}`:"no QBR scheduled"}</div></div>
+ <h3>Headline</h3><div class="kpis">${[[att===null?"unknown":att+"%","JBP attainment"],[d.A===null?"unknown":money(d.A),"attained"],[d.C===null?"unknown":money(d.C),"committed"],[d.PA===null?"—":money(d.PA),`attained ${d.pq||"previous quarter"}`],[d.x?d.x[0]:"unknown","active advertisers"],[d.x?`${d.x[1]} / ${d.x[2]}`:"unknown","formats used / pilots"]].map(([b,s])=>`<div class="kpi"><b>${esc(String(b))}</b><span>${s}</span></div>`).join("")}</div>
+ ${d.x&&PD.ageOf(d.x[4])>45?`<p class="flag red">Figures are ${PD.ageOf(d.x[4])} days old (${esc(d.x[5])}); refresh before presenting.</p>`:""}
+ <h3>Trend, all markets</h3><div class="scroll"><table><thead><tr>${d.trend.map(t=>`<th class="r">${t.q}</th>`).join("")}</tr></thead><tbody><tr>${d.trend.map(t=>`<td class="r">${!t.has?"<span class='muted'>no JBP</span>":t.a===null?"<span class='muted'>unknown</span>":`${fmt(t.a)} of ${fmt(t.c)}<br><span class="${vcls(Math.round(t.a/t.c*100)-100)}">${Math.round(t.a/t.c*100)}%</span>`}</td>`).join("")}</tr></tbody></table></div>
+ <h3>By market and variance reasons</h3><div class="scroll"><table><thead><tr><th>Market</th><th class="r">Commit</th><th class="r">Attain</th><th class="r">Variance</th><th>Reason</th></tr></thead><tbody>${d.cur.map(r=>{const p=pct(r.attain,r.commit);return`<tr><td>${esc(r.market)}</td><td class="r">${fmt(r.commit)}</td><td class="r">${isNum(r.attain)?fmt(r.attain):"<span class='muted'>unknown</span>"}</td><td class="r ${vcls(p===null?null:p-100)}">${p===null?"—":(p-100>0?"+":"")+(p-100)+"%"}</td><td>${r.reason?esc(r.reason):p!==null&&Math.abs(p-100)<=S.onPlanBand?"<span class='muted'>on plan</span>":"<span class='flag red'>no reason picked</span>"}</td></tr>`}).join("")||"<tr><td colspan=5 class='muted'>no JBP rows for this quarter</td></tr>"}</tbody></table></div>
+ <h3>Pipeline</h3><p class="mini">${d.anyOpp?`${money(d.opps.reduce((s,o)=>s+o.value,0))} open across ${d.opps.length} deals; ${d.opps.filter(o=>PD.ageOf(o.asOf)>S.staleDays).length} stale.`:"<span class='flag red'>No opportunities in the CRM: pipeline unknown.</span>"}</p>
+ <h3>Actions and owners</h3><ul>${d.acts.map(x=>`<li class="${S.done[x.key]?"muted":""}">${esc(x.text)} <span class="note">· ${esc(x.owner)}${S.done[x.key]?" · done":""}</span></li>`).join("")||"<li class='muted'>none open</li>"}</ul>
+ <h3>Next-quarter commitments ${d.nq?"("+d.nq+")":""}</h3><ul>${d.next.map(r=>`<li>${esc(r.market)}: ${money(r.commit)} · ${esc(r.formats.join(", "))}${r.pilots.length?" · pilots: "+esc(r.pilots.join(", ")):""} · ${esc(r.terms)}</li>`).join("")||"<li class='muted'>none recorded</li>"}</ul>
+ <h3>Sessions attended</h3><ul>${d.events.map(e=>`<li>${e.date} ${esc(e.type)}, ${esc(e.market)}: ${esc(e.topic)}${e.outcome?` · ${esc(e.outcome.metric)} ${e.outcome.before}→${e.outcome.after}`:" · <span class='muted'>outcome not yet measured</span>"}</li>`).join("")||"<li class='muted'>none</li>"}</ul>
+ <p class="note">Every figure above is read from the record; nothing is estimated. Blank or "unknown" means the data is missing, not zero.</p>`;
+}
+function render(){
+ const list=PD.qbrs();const rd=document.getElementById("rules");if(!rd.children.length){rd.innerHTML=Object.keys(R_LABEL).map(k=>`<label class="rule">${R_LABEL[k]}<input type="number" step="any" data-r="${k}" value="${S[k]}"></label>`).join("");rd.querySelectorAll("input").forEach(i=>i.onchange=e=>{S[e.target.dataset.r]=+e.target.value;PD.logIt(`Rule "${R_LABEL[e.target.dataset.r]}" → ${e.target.value}`);render()})}
+ const st=s=>list.filter(x=>PD.qbrStatus(x)===s).length;const cq=list.filter(x=>x.quarter===S.packQ);
+ const acts=qbrActions(list);const open=acts.filter(a=>!S.done[a.key]).length;
+ document.getElementById("kpis").innerHTML=[[`<span class="fig" data-fig="held">${cq.length?Math.round(cq.filter(x=>x.held).length/cq.length*100)+"%":"—"}</span>`,`QBRs held, ${S.packQ}`],[st("held"),"held, all quarters"],[st("overdue"),"overdue"],[st("due"),"due"],[st("scheduled"),"scheduled"],[open,"open actions"]].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+ document.getElementById("banner").innerHTML=`<b>Invented data.</b> ${list.length} QBR slots across ${PD.AGENCIES.length} agencies and ${PD.ALL_Q.length} quarters. Today is treated as ${PD.TODAY}. ${PD.EVENTS.length} roadshows and enablement sessions logged.`;
+ document.querySelector("#cal thead").innerHTML=`<tr><th>Agency</th>${PD.ALL_Q.map(q=>`<th>${q}</th>`).join("")}</tr>`;
+ document.querySelector("#cal tbody").innerHTML=PD.AGENCIES.map(a=>`<tr><td><b>${esc(a.name)}</b><br><span class="note">${esc(a.manager)}</span></td>${PD.ALL_Q.map(q=>{const x=list.find(z=>z.agency===a.id&&z.quarter===q);if(!x)return`<td class="muted">no JBP</td>`;const s=PD.qbrStatus(x);return`<td><span class="pill s-${s} fig" data-fig="q|${a.id}|${q}" title="due ${x.due}">${s}</span><br><input class="cell inline" type="date" data-held="${a.id}|${q}" value="${esc(x.held||"")}" title="held on"></td>`}).join("")}</tr>`).join("");
+ document.getElementById("aNote").textContent=`${open} open`;
+ document.getElementById("acts").innerHTML=acts.map(x=>`<li class="${S.done[x.key]?"done":""}"><input type="checkbox" data-done="${x.key}" ${S.done[x.key]?"checked":""} title="${esc(x.rule)}"><span>${esc(x.text)} <span class="note">· ${esc(x.owner)}</span></span></li>`).join("")||"<li><span class='note'>none</span></li>";
+ const pa=document.getElementById("packAgency"),pq=document.getElementById("packQ");if(!pa.options.length){PD.AGENCIES.forEach(a=>pa.add(new Option(a.name,a.id)));PD.QUARTERS.forEach(q=>pq.add(new Option(q,q)))}pa.value=S.packAgency;pq.value=S.packQ;
+ renderPack();
+ document.getElementById("eNote").textContent=`${PD.EVENTS.length} sessions, ${PD.EVENTS.filter(e=>!e.outcome).length} not yet measured`;
+ document.querySelector("#ev tbody").innerHTML=PD.EVENTS.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<tr><td>${e.date}</td><td>${esc(e.type)}</td><td>${esc(e.market)}</td><td>${e.agencies.map(x=>esc(PD.agency(x).name)).join(", ")}</td><td>${esc(e.topic)}</td><td class="r">${e.attendees}</td><td>${e.outcome?`<span class="fig" data-fig="e|${e.id}">${esc(e.outcome.metric)}: ${e.outcome.before} → ${e.outcome.after}</span><br><span class="note">${esc(e.outcome.note)}</span>`:`<span class="flag">not yet measured (${PD.ageOf(e.date)} days ago)</span>`}</td></tr>`).join("");
+ PD.renderLog(document.getElementById("log"));PD.save();
+}
+PD.wireFigures(document,id=>{const [t,a,q]=id.split("|");
+ if(t==="q"){const x=PD.qbrs().find(z=>z.agency===a&&z.quarter===q);return{title:`${PD.agency(a).name} ${q} QBR`,rows:[["Due",x.due],["Held",x.held||"not yet"],["Status",PD.qbrStatus(x)],["Days from due to today",String(PD.daysBetween(x.due,PD.TODAY))]],note:"Overdue = due date passed with no held date. The Scorer's QBR flag for this quarter reads the same record."}}
+ if(t==="held"){const cq=PD.qbrs().filter(x=>x.quarter===S.packQ);return{title:`QBRs held, ${S.packQ}`,rows:[...cq.map(x=>[PD.agency(x.agency).name,x.held?"held "+x.held:PD.qbrStatus(x)]),["Held",`${cq.filter(x=>x.held).length} of ${cq.length}`]]}}
+ if(t==="e"){const e=PD.EVENTS.find(z=>z.id===a);return{title:`${e.date} ${e.type}, ${e.market}`,rows:[["Topic",e.topic],["Agencies",e.agencies.map(x=>PD.agency(x).name).join(", ")],["Attendees",String(e.attendees)],["Metric",e.outcome.metric],["Before",String(e.outcome.before)],["After",String(e.outcome.after)],["Note",e.outcome.note]],note:"Adoption is read from the agencies' quarterly inputs one quarter after the session; a causal claim is not made."}}
+ return null});
+document.getElementById("packAgency").onchange=e=>{S.packAgency=e.target.value;render()};document.getElementById("packQ").onchange=e=>{S.packQ=e.target.value;render()};
+document.getElementById("printBtn").onclick=()=>{document.body.classList.add("print-pack");window.print()};window.addEventListener("afterprint",()=>document.body.classList.remove("print-pack"));
+document.getElementById("copyBtn").onclick=e=>PD.copyText(e.target,`You are writing a quarterly business review narrative for an agency partner of an ads business. Use only the facts below. Do not add, round differently, or infer any number; where a figure says unknown, say so rather than estimate it. Write about 200 words for a senior agency lead: what went well, what did not and why (use the reason codes given), the agreed actions with owners, and next quarter's commitments.\n\nFACTS\n${packText(packData(S.packAgency,S.packQ))}`,"Copy LLM prompt");
+document.addEventListener("change",e=>{const el=e.target;
+ if(el.dataset.held!==undefined){const [a,q]=el.dataset.held.split("|");const k=a+"|"+q;const old=(PD.qbrs().find(z=>z.agency===a&&z.quarter===q)||{}).held;S.qbr[k]=Object.assign(S.qbr[k]||{},{held:el.value||null});PD.logIt(`${PD.agency(a).name} ${q} QBR held: ${old||"—"} → ${el.value||"—"}`);render()}
+ else if(el.dataset.done){if(el.checked)S.done[el.dataset.done]=true;else delete S.done[el.dataset.done];PD.logIt(`${el.checked?"Closed":"Reopened"} action: ${el.nextElementSibling.textContent.slice(0,60)}`);render()}});
+document.getElementById("resetBtn").onclick=()=>{if(confirm("Reset Partner Desk edits (JBPs, Pipeline, QBRs) to the sample?")){PD.reset();location.reload()}};
+PD.mountChrome("QBRs");render();
+})();
+</script>
+</body>
+</html>
