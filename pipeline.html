@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline · Partner Desk</title>
+<meta name="description" content="Agency pipeline: opportunities by stage, pipeline coverage against next-quarter JBP commitments by agency and market, stale deals flagged, stage-weighted value with editable probabilities. Invented data.">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
+<script src="data.js"></script>
+</head>
+<body>
+<nav id="nav" aria-label="Partner Desk"></nav>
+<header>
+  <div><h1>Pipeline and coverage</h1>
+  <p>Every opportunity by agency, advertiser, market and stage. Coverage is open pipeline expected next quarter divided by next quarter's JBP commitment, by agency and by market. Deals not updated for N days are flagged stale; an agency with nothing in the CRM shows a blank, never a zero. All data is invented.</p></div>
+</header>
+<main>
+  <div class="banner" id="banner"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid two">
+    <div>
+      <div class="card"><h2>Stage probabilities <small>editable</small></h2><div id="probs"></div>
+        <p class="note">Weighted value = value × stage probability. Change a probability and the weighted figures update; the change is logged.</p></div>
+      <div class="card"><h2>Rules</h2><div id="rules"></div>
+        <p class="note">A stale deal is one whose as-of date is older than the limit. Coverage below the floor gets a pipeline-planning action for the partner manager.</p></div>
+      <div class="card"><h2>Weighted pipeline by stage <small>open deals, all quarters</small></h2><div class="chart"><canvas id="sChart"></canvas></div></div>
+      <div class="card"><h2>Change log</h2><div class="log" id="log"></div><div class="btns"><button class="sec" id="resetBtn">Reset sample</button></div></div>
+    </div>
+    <div>
+      <div class="card"><h2>Coverage by agency <small id="cNote"></small></h2>
+        <div class="scroll"><table id="cov"><thead><tr><th>Agency</th><th class="r">Open pipeline, next Q</th><th class="r">Weighted</th><th class="r">JBP commit, next Q</th><th class="r">Coverage</th><th>Confidence</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+        <p class="note">Coverage = open pipeline expected in the next quarter ÷ that quarter's JBP commitment. Only deals with an expected quarter equal to the next quarter count; later deals are shown in the table below but not here.</p></div>
+      <div class="card"><h2>Coverage by market</h2>
+        <div class="scroll"><table id="covM"><thead><tr><th>Market</th><th class="r">Open pipeline, next Q</th><th class="r">JBP commit, next Q</th><th class="r">Coverage</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="card"><h2>Opportunities <small id="oNote"></small></h2>
+        <div class="filters"><label>Stage <select id="fStage"><option value="">all</option><option value="open">open only</option></select></label><label>Agency <select id="fAgency"><option value="">all</option></select></label><label>Market <select id="fMarket"><option value="">all</option></select></label><label><input type="checkbox" id="fStale"> stale only</label></div>
+        <div class="scroll"><table id="tbl"><thead><tr><th>Agency</th><th>Advertiser</th><th>Market</th><th>Stage</th><th class="r">Value</th><th class="r">Weighted</th><th>Expected</th><th>As of</th><th>Source</th></tr></thead><tbody></tbody></table></div>
+        <p class="note">Stage and as-of date are editable here (stored in this browser only; in production they come from the CRM export). Click a weighted figure to see its inputs.</p></div>
+    </div>
+  </div>
+  <footer id="foot"></footer>
+</main>
+<script>
+(function(){
+const {esc,fmt,money,isNum}=PD;
+const S=PD.load();
+const R_LABEL={staleDays:"Flag a deal stale after (days without update)",covFloor:"Pipeline-planning action when coverage below (×)"};
+if(S.covFloor===undefined)S.covFloor=1.2;
+let chart;
+const nq=PD.NEXT_Q;
+function stale(o){const a=PD.ageOf(o.asOf);return a===null||a>S.staleDays}
+function render(){
+ const all=PD.opps();const open=all.filter(PD.isOpen);const nextRows=PD.jbpRows().filter(r=>r.quarter===nq);
+ const pd=document.getElementById("probs");if(!pd.children.length){pd.innerHTML=PD.STAGES.map(s=>`<label class="w">${s}<input type="range" min="0" max="100" data-p="${s}" value="${S.probs[s]}"><output>${S.probs[s]}%</output></label>`).join("");
+  pd.querySelectorAll("input").forEach(i=>{i.oninput=e=>{S.probs[e.target.dataset.p]=+e.target.value;e.target.nextElementSibling.value=e.target.value+"%";render()};i.onchange=e=>{PD.logIt(`Probability ${e.target.dataset.p} → ${e.target.value}%`);render()}})}
+ const rd=document.getElementById("rules");if(!rd.children.length){rd.innerHTML=Object.keys(R_LABEL).map(k=>`<label class="rule">${R_LABEL[k]}<input type="number" step="any" data-r="${k}" value="${S[k]}"></label>`).join("");rd.querySelectorAll("input").forEach(i=>i.onchange=e=>{S[e.target.dataset.r]=+e.target.value;PD.logIt(`Rule "${R_LABEL[e.target.dataset.r]}" → ${e.target.value}`);render()})}
+ const fa=document.getElementById("fAgency"),fm=document.getElementById("fMarket"),fs=document.getElementById("fStage");
+ if(fa.options.length===1){PD.AGENCIES.forEach(a=>fa.add(new Option(a.name,a.id)));PD.MARKETS.forEach(m=>fm.add(new Option(m,m)));PD.STAGES.forEach(s=>fs.add(new Option(s,s)))}
+ // coverage by agency
+ const cov=PD.AGENCIES.map(a=>{const c=nextRows.filter(r=>r.agency===a.id).reduce((s,r)=>s+r.commit,0);const os=open.filter(o=>o.agency===a.id&&o.expectedQ===nq);const anyOpp=all.some(o=>o.agency===a.id);const op=anyOpp?os.reduce((s,o)=>s+o.value,0):null;const w=anyOpp?os.reduce((s,o)=>s+PD.weighted(o),0):null;const st=os.filter(stale).length;const man=os.filter(o=>/manual/i.test(o.source)).length;
+  const ratio=op!==null&&c>0?op/c:null;const conf=op===null?"Low":st?"Low":man?"Medium":"High";const acts=[];
+  if(op===null)acts.push({key:`pipe|${a.id}|none`,text:`No opportunities in the CRM for ${a.name}: enter the pipeline before the QBR`,owner:a.manager,rule:"pipeline unknown"});
+  else if(ratio!==null&&ratio<S.covFloor)acts.push({key:`pipe|${a.id}|cov`,text:`Coverage ${ratio.toFixed(1)}× of ${nq} commitment: pipeline-planning review`,owner:a.manager,rule:`coverage < ${S.covFloor}×`});
+  if(st)acts.push({key:`pipe|${a.id}|stale`,text:`${st} stale deal${st>1?"s":""} (no update in ${S.staleDays} days): refresh in the CRM`,owner:a.manager,rule:`as-of older than ${S.staleDays} days`});
+  return{a,c,op,w,ratio,conf,acts,st,n:os.length}});
+ const acts=cov.flatMap(x=>x.acts);const openActs=acts.filter(x=>!S.done[x.key]).length;
+ const staleAll=open.filter(stale).length;const totOpen=open.reduce((s,o)=>s+o.value,0),totW=open.reduce((s,o)=>s+PD.weighted(o),0);
+ const kc=cov.filter(x=>x.op!==null&&x.c>0);const KO=kc.reduce((s,x)=>s+x.op,0),KC=kc.reduce((s,x)=>s+x.c,0);
+ document.getElementById("kpis").innerHTML=[[`<span class="fig" data-fig="covAll">${KC?(KO/KC).toFixed(2)+"×":"—"}</span>`,`coverage of ${nq} commitments, agencies with pipeline data`],[`<span class="fig" data-fig="open">${money(totOpen)}</span>`,"open pipeline, all quarters"],[`<span class="fig" data-fig="weighted">${money(totW)}</span>`,"weighted by stage"],[open.length,"open deals"],[staleAll,"stale deals"],[cov.filter(x=>x.op===null).length,"agencies with no pipeline recorded"],[openActs,"open actions"]].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+ document.getElementById("banner").innerHTML=`<b>Invented data.</b> ${all.length} opportunities, ${open.length} open. Next quarter is ${nq}; today is treated as ${PD.TODAY}. Figures are USD thousands. Agency D has no opportunities in the CRM: its pipeline is unknown and shown blank, not 0. The Scorer's pipeline figure for 2026-Q3 is the sum of each agency's open deals here.`;
+ document.getElementById("cNote").textContent=`${nq} · ${kc.length} of ${cov.length} agencies with a figure`;
+ document.querySelector("#cov tbody").innerHTML=cov.map(x=>`<tr><td><b>${esc(x.a.name)}</b><br><span class="note">${esc(x.a.market)} · ${esc(x.a.group)} · ${esc(x.a.manager)}</span></td>
+  <td class="r">${x.op===null?`<span class="fig na" data-fig="cov|${x.a.id}">unknown</span>`:`<span class="fig" data-fig="cov|${x.a.id}">${fmt(x.op)}</span>`}</td><td class="r">${x.w===null?"<span class='muted'>—</span>":fmt(Math.round(x.w))}</td>
+  <td class="r">${x.c?`<span class="fig" data-fig="commit|${x.a.id}">${fmt(x.c)}</span>`:"<span class='muted'>no JBP</span>"}</td>
+  <td class="r">${x.ratio===null?"<span class='muted'>—</span>":`<span class="fig ${x.ratio<S.covFloor?"var-neg":"var-pos"}" data-fig="cov|${x.a.id}">${x.ratio.toFixed(2)}×</span>`}</td>
+  <td><span class="conf c-${x.conf}">${x.conf}</span>${x.op===null?`<span class="flag red">no opportunities recorded</span>`:""}${x.st?`<span class="flag red">${x.st} stale</span>`:""}</td>
+  <td><ul class="acts">${x.acts.length?x.acts.map(y=>`<li class="${S.done[y.key]?"done":""}"><input type="checkbox" data-done="${y.key}" ${S.done[y.key]?"checked":""} title="${esc(y.rule)}"><span>${esc(y.text)} <span class="note">· ${esc(y.owner)}</span></span></li>`).join(""):`<li><span class="note">none</span></li>`}</ul></td></tr>`).join("");
+ document.querySelector("#covM tbody").innerHTML=PD.MARKETS.map(m=>{const c=nextRows.filter(r=>r.market===m).reduce((s,r)=>s+r.commit,0);const op=open.filter(o=>o.market===m&&o.expectedQ===nq).reduce((s,o)=>s+o.value,0);const unk=cov.filter(x=>x.op===null&&nextRows.some(r=>r.agency===x.a.id&&r.market===m)).length;
+  return`<tr><td>${m}${unk?`<span class="flag red">${unk} agency with no pipeline recorded; excluded</span>`:""}</td><td class="r"><span class="fig" data-fig="covM|${m}">${fmt(op)}</span></td><td class="r">${fmt(c)}</td><td class="r"><span class="fig" data-fig="covM|${m}">${c?(op/c).toFixed(2)+"×":"—"}</span></td></tr>`}).join("");
+ // chart
+ const byStage=PD.OPEN_STAGES.map(s=>open.filter(o=>o.stage===s));const data={labels:PD.OPEN_STAGES,datasets:[{label:"Weighted ($k)",data:byStage.map(l=>Math.round(l.reduce((x,o)=>x+PD.weighted(o),0))),backgroundColor:"#1aa37a"},{label:"Face value ($k)",data:byStage.map(l=>l.reduce((x,o)=>x+o.value,0)),backgroundColor:"#b9c9c1"}]};
+ if(chart){chart.data=data;chart.update()}else if(window.Chart)chart=new Chart(document.getElementById("sChart"),{type:"bar",data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}});
+ // table
+ const vis=all.filter(o=>(fs.value===""||(fs.value==="open"?PD.isOpen(o):o.stage===fs.value))&&(!fa.value||o.agency===fa.value)&&(!fm.value||o.market===fm.value)&&(!document.getElementById("fStale").checked||(PD.isOpen(o)&&stale(o))));
+ document.getElementById("oNote").textContent=`${vis.length} of ${all.length}`;
+ document.querySelector("#tbl tbody").innerHTML=vis.map(o=>{const a=PD.agency(o.agency);const age=PD.ageOf(o.asOf);const isStale=PD.isOpen(o)&&stale(o);
+  return`<tr><td><b>${esc(a.name)}</b></td><td>${esc(o.advertiser)}</td><td>${esc(o.market)}</td><td><select class="inline" data-stage="${o.id}">${PD.STAGES.map(s=>`<option ${s===o.stage?"selected":""}>${s}</option>`).join("")}</select></td><td class="r">${fmt(o.value)}</td><td class="r"><span class="fig" data-fig="w|${o.id}">${fmt(Math.round(PD.weighted(o)))}</span></td><td>${esc(o.expectedQ)}</td><td><input class="cell" type="date" data-asof="${o.id}" value="${esc(o.asOf||"")}">${isStale?`<span class="stale">stale: ${age===null?"no date":age+" days"}</span>`:""}</td><td>${esc(o.source)}${/manual/i.test(o.source)?`<span class="flag">manual</span>`:""}</td></tr>`}).join("");
+ PD.renderLog(document.getElementById("log"));PD.save();
+}
+PD.wireFigures(document,id=>{const [t,k]=id.split("|");const all=PD.opps(),open=all.filter(PD.isOpen);const nextRows=PD.jbpRows().filter(r=>r.quarter===nq);
+ if(t==="w"){const o=all.find(x=>x.id===k);return{title:`${o.advertiser} via ${PD.agency(o.agency).name}`,rows:[["Value",money(o.value)],["Stage",o.stage],["Probability",S.probs[o.stage]+"%"],["Weighted",money(PD.weighted(o))],["Expected",o.expectedQ],["As of",o.asOf||"—"],["Source",o.source]]}}
+ if(t==="cov"){const a=PD.agency(k);const os=open.filter(o=>o.agency===k&&o.expectedQ===nq);const c=nextRows.filter(r=>r.agency===k).reduce((s,r)=>s+r.commit,0);if(!all.some(o=>o.agency===k))return{title:`${a.name} coverage, ${nq}`,rows:[["Open pipeline","unknown: no opportunities in the CRM"],["JBP commitment",money(c)],["Coverage","not computed"]],note:"A blank, not a zero: the figure is unknown until the pipeline is entered."};const op=os.reduce((s,o)=>s+o.value,0);return{title:`${a.name} coverage, ${nq}`,rows:[...os.map(o=>[`${o.advertiser} ${o.market} (${o.stage})`,money(o.value)]),["Open pipeline, "+nq,money(op)],["JBP commitment, "+nq,money(c)],["Coverage",c?(op/c).toFixed(2)+"×":"—"]],note:"Deals expected after "+nq+" are not counted here."}}
+ if(t==="commit"){const rs=nextRows.filter(r=>r.agency===k);return{title:`${PD.agency(k).name} commitment, ${nq}`,rows:[...rs.map(r=>[r.market,money(r.commit)]),["Total",money(rs.reduce((s,r)=>s+r.commit,0))]]}}
+ if(t==="covM"){const os=open.filter(o=>o.market===k&&o.expectedQ===nq);const c=nextRows.filter(r=>r.market===k).reduce((s,r)=>s+r.commit,0);const op=os.reduce((s,o)=>s+o.value,0);return{title:`${k} coverage, ${nq}`,rows:[...os.map(o=>[`${o.advertiser} via ${PD.agency(o.agency).name}`,money(o.value)]),["Open pipeline",money(op)],["JBP commitment (all agencies)",money(c)],["Coverage",c?(op/c).toFixed(2)+"×":"—"]],note:"The commitment includes agencies whose pipeline is unknown, so market coverage can read low."}}
+ if(t==="covAll"){const rows=PD.AGENCIES.filter(a=>all.some(o=>o.agency===a.id)).map(a=>{const op=open.filter(o=>o.agency===a.id&&o.expectedQ===nq).reduce((s,o)=>s+o.value,0);const c=nextRows.filter(r=>r.agency===a.id).reduce((s,r)=>s+r.commit,0);return[a.name,`${fmt(op)} of ${fmt(c)}`]});return{title:`Coverage, ${nq}`,rows,note:"Agencies with no pipeline recorded are excluded from both sides."}}
+ if(t==="open"||t==="weighted"){return{title:"Open pipeline by stage",rows:PD.OPEN_STAGES.map(s=>{const l=open.filter(o=>o.stage===s);return[`${s} (${l.length}, ${S.probs[s]}%)`,`${fmt(l.reduce((x,o)=>x+o.value,0))} face, ${fmt(Math.round(l.reduce((x,o)=>x+PD.weighted(o),0)))} weighted`]})}}
+ return null});
+["fStage","fAgency","fMarket","fStale"].forEach(id=>document.getElementById(id).onchange=render);
+document.addEventListener("change",e=>{const el=e.target;
+ if(el.dataset.stage){const o=PD.opps().find(x=>x.id===el.dataset.stage);S.opp[o.id]=Object.assign(S.opp[o.id]||{},{stage:el.value,asOf:PD.TODAY});PD.logIt(`${o.advertiser} (${PD.agency(o.agency).name}) stage ${o.stage} → ${el.value}; as-of set to today`);render()}
+ else if(el.dataset.asof){const o=PD.opps().find(x=>x.id===el.dataset.asof);S.opp[o.id]=Object.assign(S.opp[o.id]||{},{asOf:el.value||null});PD.logIt(`${o.advertiser} as-of ${o.asOf||"—"} → ${el.value||"—"}`);render()}
+ else if(el.dataset.done){if(el.checked)S.done[el.dataset.done]=true;else delete S.done[el.dataset.done];PD.logIt(`${el.checked?"Closed":"Reopened"} action: ${el.nextElementSibling.textContent.slice(0,60)}`);render()}});
+document.getElementById("resetBtn").onclick=()=>{if(confirm("Reset Partner Desk edits (JBPs, Pipeline, QBRs) to the sample?")){PD.reset();location.reload()}};
+PD.mountChrome("Pipeline");render();
+})();
+</script>
+</body>
+</html>
