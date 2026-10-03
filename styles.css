@@ -69,3 +69,30 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
   .card{border:none;padding:0;break-inside:avoid}.pack{padding:0}
   .fig{border-bottom:none}
 }
+
+/* ---------- Guided tour (tour.js) ---------- */
+.pd-tour-block{position:fixed;inset:0;z-index:9998;background:transparent}
+.pd-tour-spot{position:fixed;z-index:9999;border-radius:8px;pointer-events:none;box-shadow:0 0 0 3px var(--brand2),0 0 0 9999px rgba(8,14,11,.62)}
+.pd-tour-card{position:fixed;z-index:10001;width:340px;max-width:calc(100vw - 24px);background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.pd-tour-card h2{margin:2px 0 6px;font-size:15px;color:var(--brand)}
+:root[data-theme=dark] .pd-tour-card h2{color:var(--brand2)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .pd-tour-card h2{color:var(--brand2)}}
+.pd-tour-card p{margin:0 0 10px;font-size:13px}
+.pd-tour-count{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.pd-tour-btns,.pd-tour-extra{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pd-tour-extra{margin-bottom:10px}.pd-tour-extra:empty{display:none}
+.pd-tour-extra .btn{text-decoration:none;display:inline-block;background:var(--brand);color:#fff}
+.pd-tour-skip{margin-left:auto;border-color:transparent;background:transparent}
+.pd-tour-card button:disabled{opacity:.45;cursor:default}
+.pd-tour-card button:focus-visible,.pd-tour-card a:focus-visible,.pd-tour-chip button:focus-visible,.pd-tour-hero:focus-visible{outline:3px solid var(--brand2);outline-offset:2px}
+button.pd-tour-nav{border-color:var(--brand);font-weight:600}
+.pd-tour-hero{display:block;margin-top:10px;background:#fff;color:#0b4f3c;border:1px solid #fff;font-weight:700;font-size:14px;padding:9px 16px;border-radius:8px;cursor:pointer}
+.pd-tour-chip{position:fixed;left:16px;bottom:16px;z-index:9000;display:flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 6px 5px 6px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.pd-tour-chip button{border-radius:999px}.pd-tour-chip .pd-tour-x{padding:2px 9px;border-color:transparent;background:transparent;font-size:16px;line-height:1}
+@media(max-width:600px){
+  .pd-tour-card{left:8px;right:8px;bottom:8px;top:auto;width:auto;max-width:none}
+  .pd-tour-chip{left:8px;right:8px;bottom:8px;justify-content:space-between}
+  body.pd-touring-pad,html.pd-touring body{padding-bottom:230px}
+}
+@media(prefers-reduced-motion:no-preference){.pd-tour-spot{transition:left .18s,top .18s,width .18s,height .18s}}
+@media print{.pd-tour-block,.pd-tour-spot,.pd-tour-card,.pd-tour-chip,.pd-tour-nav,.pd-tour-hero{display:none !important}}
