@@ -16,6 +16,7 @@ The operating layer for an ads platform's agency channel: every holding group, a
 | `qbrs.html` | **QBRs.** Calendar per agency (held, due, overdue, scheduled); printable QBR pack generated from the record; copy-LLM-prompt; roadshow and enablement log with adoption outcomes. |
 | `method.html` | **Method.** The proposal in plain language, the design rules, what it is not, about the author. |
 | `styles.css` | One stylesheet for all pages (light and dark, print rules for the QBR pack). |
+| `tour.js` | **Guided tour.** A 7-step, 2-minute walkthrough (button in the nav and on the Scorer header, `?tour=N` to resume); Esc or Skip ends it, and a first-visit chip offers it once. |
 | `data.js` | One invented dataset and the shared helpers. The scorer's target and actual per agency are the sums of the JBP rows by market, its QBR flag reads the QBR calendar, and its current-quarter pipeline is the sum of the agency's open deals, so the pages cannot disagree. |
 
 ## Rules carried across every page
